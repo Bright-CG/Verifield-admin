@@ -91,7 +91,7 @@ export default function MapDashboardPage() {
                 </div>
                 <p className="text-sm text-slate-300 flex items-center gap-1">
                   <ShieldAlert className="w-3 h-3 text-red-400" />
-                  Off-site capture detected (>100m)
+                  Off-site capture detected (&gt;100m)
                 </p>
               </div>
             </div>
