@@ -13,13 +13,13 @@ import {
   DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
 import { Card } from "@/components/ui/card"
-import { Plus, CheckCircle2, Clock, Copy, Eye } from "lucide-react"
+import { Plus, CheckCircle2, Clock, Copy } from "lucide-react"
+import { STATE_NAMES, getLGAsForState } from "@/lib/nigeria-lgas"
 
 interface Staff {
   id: string
   name: string
   email: string
-  role: string
   email_verified_at: string | null
   assigned_state: string | null
   assigned_lga: string | null
@@ -32,6 +32,34 @@ interface NewCredentials {
   temp_password: string
 }
 
+const SelectField = ({
+  id, label, value, onChange, options, placeholder, disabled,
+}: {
+  id: string
+  label: string
+  value: string
+  onChange: (v: string) => void
+  options: string[]
+  placeholder?: string
+  disabled?: boolean
+}) => (
+  <div className="space-y-2">
+    <Label htmlFor={id}>{label}</Label>
+    <select
+      id={id}
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      <option value="">{placeholder ?? "Select..."}</option>
+      {options.map((o) => (
+        <option key={o} value={o}>{o}</option>
+      ))}
+    </select>
+  </div>
+)
+
 export default function StaffPage() {
   const [staff, setStaff] = useState<Staff[]>([])
   const [loading, setLoading] = useState(true)
@@ -41,9 +69,15 @@ export default function StaffPage() {
   const [error, setError] = useState("")
 
   const [form, setForm] = useState({
-    name: "", email: "",
-    assigned_state: "", assigned_lga: "", assigned_ward: "",
+    name: "",
+    email: "",
+    assigned_state: "",
+    assigned_lga: "",
+    assigned_ward: "",
   })
+
+  // Derived LGA list based on selected state
+  const lgas = form.assigned_state ? getLGAsForState(form.assigned_state) : []
 
   const token = typeof window !== "undefined" ? localStorage.getItem("vf_token") : ""
 
@@ -51,17 +85,24 @@ export default function StaffPage() {
     setLoading(true)
     try {
       const res = await fetch("http://localhost:8000/api/v1/staff", {
-        headers: { "Accept": "application/json", "Authorization": `Bearer ${token}` },
+        headers: {
+          "Accept": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
       })
       if (res.ok) {
         const json = await res.json()
-        setStaff(json.data)
+        setStaff(json.data ?? [])
       }
-    } catch { /* network error */ }
+    } catch { /* backend offline */ }
     finally { setLoading(false) }
   }
 
   useEffect(() => { fetchStaff() }, [])
+
+  const handleStateChange = (state: string) => {
+    setForm({ ...form, assigned_state: state, assigned_lga: "", assigned_ward: "" })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -107,19 +148,36 @@ export default function StaffPage() {
         </Button>
       </div>
 
-      {/* Credentials Banner */}
+      {/* One-time Credentials Banner */}
       {credentials && (
         <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-primary mb-1">✅ Staff created! Share these credentials once — they will not be shown again.</p>
-            <p className="text-sm text-foreground">Email: <span className="font-mono font-bold">{credentials.email}</span></p>
-            <p className="text-sm text-foreground">Temp Password: <span className="font-mono font-bold">{credentials.temp_password}</span></p>
+            <p className="text-sm font-semibold text-primary mb-1">
+              ✅ Staff created! Share these credentials — they will not be shown again.
+            </p>
+            <p className="text-sm">
+              Email: <span className="font-mono font-bold">{credentials.email}</span>
+            </p>
+            <p className="text-sm">
+              Temporary Password: <span className="font-mono font-bold">{credentials.temp_password}</span>
+            </p>
           </div>
           <div className="flex gap-2 shrink-0">
-            <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(`Email: ${credentials.email}\nPassword: ${credentials.temp_password}`)}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-border"
+              onClick={() =>
+                navigator.clipboard.writeText(
+                  `Email: ${credentials.email}\nPassword: ${credentials.temp_password}`
+                )
+              }
+            >
               <Copy className="w-3 h-3 mr-1" /> Copy
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setCredentials(null)}>Dismiss</Button>
+            <Button size="sm" variant="ghost" onClick={() => setCredentials(null)}>
+              Dismiss
+            </Button>
           </div>
         </div>
       )}
@@ -187,43 +245,91 @@ export default function StaffPage() {
           <DialogHeader>
             <DialogTitle>Add New Staff Member</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Assign a field agent to their territory. A temporary password will be auto-generated.
+              Assign a field agent to their territory. A temporary password is auto-generated.
             </DialogDescription>
           </DialogHeader>
+
           <form onSubmit={handleSubmit} className="space-y-4 py-2">
             <div className="space-y-2">
               <Label htmlFor="s-name">Full Name</Label>
-              <Input id="s-name" placeholder="John Doe" required value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })} className="bg-background border-input" />
+              <Input
+                id="s-name"
+                placeholder="John Doe"
+                required
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className="bg-background border-input"
+              />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="s-email">Email Address</Label>
-              <Input id="s-email" type="email" placeholder="agent@example.com" required value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })} className="bg-background border-input" />
+              <Input
+                id="s-email"
+                type="email"
+                placeholder="agent@example.com"
+                required
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                className="bg-background border-input"
+              />
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="s-state">State</Label>
-                <Input id="s-state" placeholder="Lagos" value={form.assigned_state}
-                  onChange={(e) => setForm({ ...form, assigned_state: e.target.value })} className="bg-background border-input" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="s-lga">LGA</Label>
-                <Input id="s-lga" placeholder="Ikeja" value={form.assigned_lga}
-                  onChange={(e) => setForm({ ...form, assigned_lga: e.target.value })} className="bg-background border-input" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="s-ward">Ward</Label>
-                <Input id="s-ward" placeholder="Ward 01" value={form.assigned_ward}
-                  onChange={(e) => setForm({ ...form, assigned_ward: e.target.value })} className="bg-background border-input" />
-              </div>
+
+            {/* Cascading State → LGA */}
+            <SelectField
+              id="s-state"
+              label="State"
+              value={form.assigned_state}
+              onChange={handleStateChange}
+              options={STATE_NAMES}
+              placeholder="Select a State..."
+            />
+
+            <SelectField
+              id="s-lga"
+              label="Local Government Area (LGA)"
+              value={form.assigned_lga}
+              onChange={(v) => setForm({ ...form, assigned_lga: v, assigned_ward: "" })}
+              options={lgas}
+              placeholder={form.assigned_state ? "Select an LGA..." : "Select a State first"}
+              disabled={!form.assigned_state}
+            />
+
+            {/* Ward is free text — ward data too granular for a static list */}
+            <div className="space-y-2">
+              <Label htmlFor="s-ward">
+                Ward{" "}
+                <span className="text-muted-foreground text-xs font-normal">(type the ward name)</span>
+              </Label>
+              <Input
+                id="s-ward"
+                placeholder="e.g. Ward 01 / Polling Unit 005"
+                value={form.assigned_ward}
+                onChange={(e) => setForm({ ...form, assigned_ward: e.target.value })}
+                className="bg-background border-input"
+              />
             </div>
+
             {error && (
-              <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">{error}</p>
+              <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
+                {error}
+              </p>
             )}
+
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="border-border">Cancel</Button>
-              <Button type="submit" disabled={submitting} className="bg-primary text-primary-foreground hover:bg-primary/90">
+              <Button
+                type="button"
+                variant="outline"
+                className="border-border"
+                onClick={() => setIsDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              >
                 {submitting ? "Creating..." : "Create Staff"}
               </Button>
             </DialogFooter>

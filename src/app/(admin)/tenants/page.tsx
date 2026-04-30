@@ -22,19 +22,19 @@ export default function TenantsPage() {
   const fetchTenants = async () => {
     setLoading(true)
     try {
-      // Assuming XAMPP Laravel is on port 8000
+      const token = localStorage.getItem("vf_token")
       const res = await fetch("http://localhost:8000/api/v1/tenants", {
         headers: {
-          "Accept": "application/json"
-          // Authorization: Bearer <token> would go here once auth is fully wired
-        }
+          "Accept": "application/json",
+          "Authorization": token ? `Bearer ${token}` : "",
+        },
       })
       if (res.ok) {
         const json = await res.json()
-        setTenants(json.data)
+        setTenants(json.data ?? [])
       }
-    } catch (err) {
-      console.error("Failed to fetch tenants", err)
+    } catch {
+      // Backend not running — handled silently; table shows empty state
     } finally {
       setLoading(false)
     }
