@@ -1,56 +1,97 @@
+"use client"
+
 import React from "react"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { LayoutDashboard, Map, Users, FileText, LogOut, UserCheck } from "lucide-react"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { cn } from "@/lib/utils"
+
+const navItems = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/map", label: "Live Map", icon: Map },
+  { href: "/tenants", label: "Tenants & Config", icon: Users },
+  { href: "/staff", label: "Staff Management", icon: UserCheck },
+  { href: "/audit-log", label: "Audit Trail", icon: FileText },
+]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+
   return (
-    <div className="flex h-screen w-full bg-black text-slate-200 selection:bg-indigo-500/30">
+    <div className="flex h-screen w-full bg-background text-foreground">
       
-      {/* Glassmorphic Sidebar */}
-      <aside className="w-64 flex flex-col border-r border-white/10 bg-white/5 backdrop-blur-xl">
-        <div className="h-16 flex items-center px-6 border-b border-white/10">
-          <span className="text-xl font-bold tracking-tighter text-white">Veri<span className="text-indigo-400">Field</span></span>
-          <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white/70">SUPER</span>
+      {/* Sidebar */}
+      <aside className="w-64 flex flex-col border-r border-border bg-card">
+        {/* Logo */}
+        <div className="h-16 flex items-center px-6 border-b border-border">
+          <span className="text-xl font-bold tracking-tighter">
+            Veri<span className="text-primary">Field</span>
+          </span>
+          <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+            SUPER
+          </span>
         </div>
         
-        <nav className="flex-1 py-6 px-4 space-y-2">
-          <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all">
-            Dashboard
-          </Link>
-          <Link href="/map" className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all">
-            Live Map
-          </Link>
-          <Link href="/tenants" className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.1)] transition-all">
-            Tenants & Config
-          </Link>
-          <Link href="/audit-log" className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all">
-            Audit Trail
-          </Link>
+        {/* Nav */}
+        <nav className="flex-1 py-6 px-3 space-y-1">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
+                  isActive
+                    ? "bg-primary/10 text-primary border border-primary/20 shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                )}
+              >
+                <item.icon className="h-4 w-4 shrink-0" />
+                {item.label}
+              </Link>
+            )
+          })}
         </nav>
         
-        <div className="p-4 border-t border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white shadow-lg">
-              SA
+        {/* Footer */}
+        <div className="p-4 border-t border-border space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-xs font-bold text-white shadow-lg">
+                SA
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-medium truncate">Super Admin</span>
+                <span className="text-xs text-muted-foreground">System Owner</span>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-white">Super Admin</span>
-              <span className="text-xs text-slate-500">System Owner</span>
-            </div>
+            <ThemeToggle />
           </div>
+
+          <button
+            onClick={() => {
+              localStorage.removeItem("vf_token")
+              window.location.href = "/login"
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        {/* Subtle Ambient Background Glows */}
-        <div className="absolute top-0 left-0 w-full h-[500px] bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none -z-10" />
-        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-purple-500/5 blur-[120px] rounded-full pointer-events-none -z-10" />
-        
-        <header className="h-16 flex items-center px-8 border-b border-white/10 bg-black/40 backdrop-blur-md z-10 sticky top-0">
-          <h1 className="text-lg font-semibold text-white">Tenant Management</h1>
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <header className="h-16 flex items-center px-8 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+          <h1 className="text-lg font-semibold">
+            {navItems.find(n => pathname.startsWith(n.href))?.label ?? "VeriField Admin"}
+          </h1>
         </header>
 
-        <div className="flex-1 overflow-auto p-8 z-10">
+        <div className="flex-1 overflow-auto p-8 bg-background">
           {children}
         </div>
       </main>
