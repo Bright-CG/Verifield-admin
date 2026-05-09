@@ -1,0 +1,237 @@
+"use client"
+
+import React, { useEffect, useState, useRef } from "react"
+import { useParams } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import {
+  ShieldCheck, ShieldAlert, Printer, Download,
+  MapPin, Clock, User, Hash, Fingerprint
+} from "lucide-react"
+
+interface CertificateData {
+  verification: {
+    id: string
+    gps_lat: number
+    gps_long: number
+    device_timestamp: string
+    server_timestamp: string
+    hash_chain: string
+    hash_previous: string
+    image_url: string
+    accuracy: number
+    metadata: { distance_from_unit: number; is_off_site: boolean }
+    user: { name: string; email: string }
+    unit: { name: string; state: string; lga: string; ward: string }
+  }
+  hash_valid: boolean
+  certificate_id: string
+  issued_at: string
+}
+
+export default function CertificatePage() {
+  const params = useParams()
+  const id = params?.id as string
+  const [data, setData] = useState<CertificateData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+  const printRef = useRef<HTMLDivElement>(null)
+
+  const token = typeof window !== "undefined" ? localStorage.getItem("vf_token") : ""
+
+  useEffect(() => {
+    if (!id) return
+    fetch(`http://localhost:8000/api/v1/verifications/${id}/certificate`, {
+      headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" },
+    })
+      .then(r => r.json())
+      .then(json => { setData(json.data); setLoading(false) })
+      .catch(() => { setError("Failed to load certificate."); setLoading(false) })
+  }, [id, token])
+
+  const handlePrint = () => window.print()
+
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-pulse text-muted-foreground">Loading certificate...</div>
+    </div>
+  )
+
+  if (error || !data) return (
+    <div className="min-h-screen flex items-center justify-center text-destructive">{error || "Not found"}</div>
+  )
+
+  const v = data.verification
+
+  return (
+    <div className="min-h-screen bg-muted/30 p-6">
+      {/* Action Buttons — hidden during print */}
+      <div className="print:hidden flex justify-end gap-3 mb-6 max-w-3xl mx-auto">
+        <Button variant="outline" className="border-border gap-2" onClick={handlePrint}>
+          <Printer className="w-4 h-4" /> Print Certificate
+        </Button>
+        <Button className="bg-primary text-primary-foreground gap-2" onClick={handlePrint}>
+          <Download className="w-4 h-4" /> Save as PDF
+        </Button>
+      </div>
+
+      {/* Certificate Document */}
+      <div
+        ref={printRef}
+        className="max-w-3xl mx-auto bg-card border border-border rounded-2xl overflow-hidden shadow-2xl print:shadow-none print:rounded-none"
+      >
+        {/* Header Band */}
+        <div className="bg-primary px-8 py-6 text-primary-foreground">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs font-semibold tracking-widest opacity-70 mb-1">OFFICIAL EVIDENCE CERTIFICATE</div>
+              <div className="text-2xl font-bold">VeriField</div>
+              <div className="text-sm opacity-70">Secure Field Verification System</div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs opacity-70 mb-1">Certificate ID</div>
+              <div className="text-xl font-mono font-bold">{data.certificate_id}</div>
+              <div className="text-xs opacity-70 mt-1">
+                Issued: {new Date(data.issued_at).toLocaleString()}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Hash Chain Validity Banner */}
+        <div className={`px-8 py-3 flex items-center gap-3 ${
+          data.hash_valid
+            ? "bg-emerald-500/10 border-b border-emerald-500/20"
+            : "bg-destructive/10 border-b border-destructive/20"
+        }`}>
+          {data.hash_valid
+            ? <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0" />
+            : <ShieldAlert className="w-5 h-5 text-destructive shrink-0" />
+          }
+          <div>
+            <div className={`font-semibold text-sm ${data.hash_valid ? "text-emerald-500" : "text-destructive"}`}>
+              {data.hash_valid ? "Hash Chain: VERIFIED ✓" : "Hash Chain: INTEGRITY FAILURE ✗"}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {data.hash_valid
+                ? "This record has not been tampered with. SHA-256 hash chain is intact."
+                : "WARNING: This record may have been altered. Hash does not match."}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-8 space-y-6">
+          {/* Two Column Grid */}
+          <div className="grid grid-cols-2 gap-6">
+            {/* Agent Info */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                <User className="w-3 h-3" /> Field Agent
+              </div>
+              <div className="font-semibold text-foreground">{v.user?.name ?? "—"}</div>
+              <div className="text-sm text-muted-foreground">{v.user?.email ?? "—"}</div>
+            </div>
+
+            {/* Unit Info */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                <MapPin className="w-3 h-3" /> Polling Unit / Site
+              </div>
+              <div className="font-semibold text-foreground">{v.unit?.name ?? "—"}</div>
+              <div className="text-sm text-muted-foreground">
+                {[v.unit?.state, v.unit?.lga, v.unit?.ward].filter(Boolean).join(" › ")}
+              </div>
+            </div>
+
+            {/* Timestamps */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                <Clock className="w-3 h-3" /> Timestamps
+              </div>
+              <div className="text-sm">
+                <span className="text-muted-foreground">Device: </span>
+                <span className="font-mono text-foreground text-xs">{new Date(v.device_timestamp).toLocaleString()}</span>
+              </div>
+              <div className="text-sm">
+                <span className="text-muted-foreground">Server: </span>
+                <span className="font-mono text-foreground text-xs">{new Date(v.server_timestamp).toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* GPS */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                <MapPin className="w-3 h-3" /> GPS Coordinates
+              </div>
+              <div className="font-mono text-sm text-foreground">
+                {v.gps_lat.toFixed(6)}, {v.gps_long.toFixed(6)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Accuracy: ±{v.accuracy}m
+                {v.metadata?.is_off_site && (
+                  <span className="ml-2 text-destructive font-semibold">⚠ Off-site</span>
+                )}
+              </div>
+              {v.metadata?.distance_from_unit && (
+                <div className="text-xs text-muted-foreground">
+                  {v.metadata.distance_from_unit.toFixed(1)}m from unit
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-border" />
+
+          {/* Hash Chain */}
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              <Hash className="w-3 h-3" /> SHA-256 Hash Chain
+            </div>
+            <div className="space-y-2">
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Previous Hash (H_{"{n-1}"})</div>
+                <div className="font-mono text-xs bg-muted p-2 rounded break-all text-muted-foreground">
+                  {v.hash_previous}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Current Hash (H_n)</div>
+                <div className={`font-mono text-xs p-2 rounded break-all ${
+                  data.hash_valid
+                    ? "bg-emerald-500/10 text-emerald-600"
+                    : "bg-destructive/10 text-destructive"
+                }`}>
+                  {v.hash_chain}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Captured Image */}
+          {v.image_url && (
+            <>
+              <div className="border-t border-border" />
+              <div>
+                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  <Fingerprint className="w-3 h-3" /> Captured Evidence
+                </div>
+                <img
+                  src={v.image_url}
+                  alt="Field evidence capture"
+                  className="w-full max-h-64 object-contain rounded-lg border border-border bg-muted"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                />
+              </div>
+            </>
+          )}
+
+          {/* Footer */}
+          <div className="border-t border-border pt-4 text-center text-xs text-muted-foreground">
+            <p>This certificate is system-generated and cryptographically linked to an immutable audit trail.</p>
+            <p className="mt-1">Record ID: <span className="font-mono">{v.id}</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

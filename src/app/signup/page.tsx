@@ -42,6 +42,9 @@ export default function SignupPage() {
 
       if (res.ok) {
         localStorage.setItem("vf_token", data.token)
+        if (data.user?.role) localStorage.setItem("vf_role", data.user.role)
+        if (data.user?.tenant_id) localStorage.setItem("vf_tenant_id", data.user.tenant_id)
+        else localStorage.removeItem("vf_tenant_id")
         // If subscription is active, go to plan selection; else go to dashboard
         router.push(data.subscription_required ? "/select-plan" : "/dashboard")
       } else {

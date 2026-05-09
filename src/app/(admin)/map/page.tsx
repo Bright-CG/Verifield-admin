@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react"
 import dynamic from "next/dynamic"
 import { Card } from "@/components/ui/card"
-import { ShieldAlert, SignalHigh, WifiOff, MapPin, CheckCircle2 } from "lucide-react"
+import { SignalHigh, WifiOff, MapPin, CheckCircle2 } from "lucide-react"
 
 const MapWithNoSSR = dynamic(() => import("@/components/LiveMap"), {
   ssr: false,
@@ -25,29 +25,8 @@ interface LiveEvent {
 }
 
 export default function MapDashboardPage() {
-  const [units, setUnits] = useState<any[]>([
-    { id: 1, name: "PU 001 - Lagos",    lat: 6.5244,  lng: 3.3792,  status: "Pending" },
-    { id: 2, name: "Store A - Abuja",   lat: 9.0765,  lng: 7.3986,  status: "Pending" },
-    { id: 3, name: "PU 012 - Kano",     lat: 12.0022, lng: 8.5920,  status: "Pending" },
-  ])
-  const [feed, setFeed] = useState<LiveEvent[]>([
-    {
-      id: "mock-1",
-      unitName: "PU 001 - Lagos",
-      agentName: "Demo Agent",
-      lat: 6.5244, lng: 3.3792,
-      timestamp: new Date(Date.now() - 120000),
-      isOffSite: false,
-    },
-    {
-      id: "mock-2",
-      unitName: "Store B - Ibadan",
-      agentName: "System",
-      lat: 7.3775, lng: 3.9470,
-      timestamp: new Date(Date.now() - 300000),
-      isOffSite: true,
-    },
-  ])
+  const [units, setUnits] = useState<any[]>([])
+  const [feed, setFeed] = useState<LiveEvent[]>([])
   const [connected, setConnected] = useState(false)
   const [echoError, setEchoError] = useState(false)
 
@@ -56,10 +35,10 @@ export default function MapDashboardPage() {
       id: event.id,
       unitName: event.unit_name,
       agentName: event.agent?.name ?? "Unknown Agent",
-      lat: event.gps_lat,
-      lng: event.gps_long,
+      lat: Number(event.gps_lat),
+      lng: Number(event.gps_long),
       timestamp: new Date(),
-      isOffSite: false,
+      isOffSite: Boolean(event.is_off_site),
     }
 
     // Add to live feed (max 20 items)
@@ -74,9 +53,69 @@ export default function MapDashboardPage() {
   }, [])
 
   useEffect(() => {
+    const tenantId = localStorage.getItem("vf_tenant_id")
+    const token = localStorage.getItem("vf_token")
+    if (!tenantId || !token) {
+      const role = localStorage.getItem("vf_role")
+      if (role === "super_admin") {
+        setUnits([
+          { id: "demo-1", name: "PU 001 — Demo (Lagos)", lat: 6.5244, lng: 3.3792, status: "Pending" },
+          { id: "demo-2", name: "Store A — Demo (Abuja)", lat: 9.0765, lng: 7.3986, status: "Pending" },
+        ])
+        setFeed([
+          {
+            id: "mock-1",
+            unitName: "PU 001 — Demo",
+            agentName: "Demo Agent",
+            lat: 6.5244, lng: 3.3792,
+            timestamp: new Date(Date.now() - 120000),
+            isOffSite: false,
+          },
+        ])
+      }
+      return
+    }
+
+    const loadUnits = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/api/v1/hierarchy", {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        if (!res.ok) return
+        const json = await res.json()
+        const raw = json.data?.units ?? []
+        setUnits(
+          raw
+            .filter((u: any) => u.lat != null && u.long != null)
+            .map((u: any) => ({
+              id: u.id,
+              name: u.name,
+              lat: Number(u.lat),
+              lng: Number(u.long),
+              status: "Pending",
+            }))
+        )
+      } catch {
+        /* ignore — backend may be offline */
+      }
+    }
+
+    void loadUnits()
+  }, [])
+
+  useEffect(() => {
     let echo: any = null
 
     const initEcho = async () => {
+      const tenantId = localStorage.getItem("vf_tenant_id")
+      if (!tenantId) {
+        setEchoError(false)
+        return
+      }
+
       try {
         const [{ default: Echo }, { default: Pusher }] = await Promise.all([
           import("laravel-echo"),
@@ -95,11 +134,8 @@ export default function MapDashboardPage() {
           enabledTransports: ["ws"],
         })
 
-        const token = localStorage.getItem("vf_token")
-
-        // Listen on tenant channel — replace "1" with actual tenant_id from auth
         echo
-          .channel("verifications.1")
+          .channel(`verifications.${tenantId}`)
           .listen(".verification.received", (e: any) => {
             handleVerification(e)
           })
@@ -113,7 +149,7 @@ export default function MapDashboardPage() {
       }
     }
 
-    initEcho()
+    void initEcho()
 
     return () => {
       echo?.disconnect()

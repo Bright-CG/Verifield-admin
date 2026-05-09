@@ -33,6 +33,13 @@ export default function LoginPage() {
 
       if (res.ok) {
         localStorage.setItem("vf_token", data.token)
+        if (data.user?.role) localStorage.setItem("vf_role", data.user.role)
+        if (data.user?.tenant_id) localStorage.setItem("vf_tenant_id", data.user.tenant_id)
+        else localStorage.removeItem("vf_tenant_id")
+        if (data.requires_email_verification) {
+          setError("Your email is not verified yet. Please check your inbox and verify before continuing.")
+          return
+        }
         router.push("/dashboard")
       } else {
         setError(data.message || "Invalid credentials. Please try again.")

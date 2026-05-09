@@ -1,0 +1,59 @@
+# Deploy to server: rsync → /home/verifield/admin/
+# Secrets: VERIFIELD_HOST, VERIFIELD_PORT, VERIFIELD_USER, VERIFIELD_SSH_KEY, VERIFIELD_PASSPHRASE
+name: Deploy admin
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-admin-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy via rsync + fix permissions
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VERIFIELD_SSH_KEY }}
+          SSH_PASSPHRASE: ${{ secrets.VERIFIELD_PASSPHRASE }}
+          DEPLOY_HOST: ${{ secrets.VERIFIELD_HOST }}
+          DEPLOY_USER: ${{ secrets.VERIFIELD_USER }}
+          DEPLOY_PORT: ${{ secrets.VERIFIELD_PORT }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          umask 077
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          eval "$(ssh-agent -s)"
+          if [ -n "${SSH_PASSPHRASE:-}" ]; then
+            echo "$SSH_PASSPHRASE" | ssh-add ~/.ssh/deploy_key
+          else
+            ssh-add ~/.ssh/deploy_key
+          fi
+          SSH_OPTS="-i ~/.ssh/deploy_key -p ${DEPLOY_PORT} -o StrictHostKeyChecking=accept-new"
+          REMOTE="${DEPLOY_USER}@${DEPLOY_HOST}"
+          DEST="/home/verifield/admin/"
+
+          # Excludes: server keeps node_modules, .next build, env (not in git); --delete won't remove excluded dest paths.
+          rsync -avz --delete \
+            -e "ssh $SSH_OPTS" \
+            --exclude='.git/' \
+            --exclude='node_modules/' \
+            --exclude='.next/' \
+            --exclude='out/' \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            ./ "${REMOTE}:${DEST}"
+
+          ssh $SSH_OPTS "${REMOTE}" \
+            "find ${DEST} -type d -exec chmod 755 {} + && find ${DEST} -type f -exec chmod 644 {} +"
