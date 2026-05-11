@@ -1,5 +1,6 @@
 # Deploy to server: rsync → /home/verifield/admin/
-# Secrets: VERIFIELD_HOST, VERIFIELD_PORT, VERIFIELD_USER, VERIFIELD_SSH_KEY, VERIFIELD_PASSPHRASE
+# Secrets: VERIFIELD_HOST, VERIFIELD_PORT (optional, default 22), VERIFIELD_USER,
+#          VERIFIELD_SSH_KEY (full private key with real newlines), VERIFIELD_PASSPHRASE (if key encrypted)
 name: Deploy admin
 
 on:
@@ -13,6 +14,9 @@ concurrency:
 
 permissions:
   contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   deploy:
@@ -29,24 +33,45 @@ jobs:
           DEPLOY_USER: ${{ secrets.VERIFIELD_USER }}
           DEPLOY_PORT: ${{ secrets.VERIFIELD_PORT }}
         run: |
-          set -euo pipefail
+          set -eo pipefail
           mkdir -p ~/.ssh
-          umask 077
-          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
+          chmod 700 ~/.ssh
+
+          python3 <<'PY'
+          import os, pathlib, sys
+          key = os.environ.get("SSH_PRIVATE_KEY", "")
+          if not key or not key.strip():
+              sys.exit("ERROR: VERIFIELD_SSH_KEY secret is missing or empty.")
+          p = pathlib.Path.home() / ".ssh" / "deploy_key"
+          text = key if key.endswith("\n") else key + "\n"
+          p.write_text(text)
+          p.chmod(0o600)
+          PY
+
+          PORT="${DEPLOY_PORT:-22}"
+          ssh-keyscan -p "${PORT}" -H "${DEPLOY_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
           eval "$(ssh-agent -s)"
           if [ -n "${SSH_PASSPHRASE:-}" ]; then
-            echo "$SSH_PASSPHRASE" | ssh-add ~/.ssh/deploy_key
+            export SSH_PASSPHRASE
+            echo '#!/bin/sh' > /tmp/ssh-askpass.sh
+            echo 'printf "%s\n" "$SSH_PASSPHRASE"' >> /tmp/ssh-askpass.sh
+            chmod +x /tmp/ssh-askpass.sh
+            DISPLAY=:0 SSH_ASKPASS=/tmp/ssh-askpass.sh SSH_ASKPASS_REQUIRE=force ssh-add ~/.ssh/deploy_key
           else
             ssh-add ~/.ssh/deploy_key
           fi
-          SSH_OPTS="-i ~/.ssh/deploy_key -p ${DEPLOY_PORT} -o StrictHostKeyChecking=accept-new"
+          ssh-add -l
+
+          # accept-new: trust host on first connect if keyscan could not pre-populate (common on restricted networks)
+          SSH_BASE="-p ${PORT} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${HOME}/.ssh/known_hosts"
           REMOTE="${DEPLOY_USER}@${DEPLOY_HOST}"
           DEST="/home/verifield/admin/"
 
-          # Excludes: server keeps node_modules, .next build, env (not in git); --delete won't remove excluded dest paths.
+          ssh ${SSH_BASE} "${REMOTE}" "mkdir -p ${DEST}"
+
           rsync -avz --delete \
-            -e "ssh $SSH_OPTS" \
+            -e "ssh ${SSH_BASE}" \
             --exclude='.git/' \
             --exclude='node_modules/' \
             --exclude='.next/' \
@@ -55,5 +80,5 @@ jobs:
             --exclude='.env.*' \
             ./ "${REMOTE}:${DEST}"
 
-          ssh $SSH_OPTS "${REMOTE}" \
+          ssh ${SSH_BASE} "${REMOTE}" \
             "find ${DEST} -type d -exec chmod 755 {} + && find ${DEST} -type f -exec chmod 644 {} +"
