@@ -7,6 +7,7 @@ import {
   ShieldCheck, ShieldAlert, Printer, Download,
   MapPin, Clock, User, Hash, Fingerprint
 } from "lucide-react"
+import { apiUrl } from "@/lib/api-base"
 
 interface CertificateData {
   verification: {
@@ -40,7 +41,7 @@ export default function CertificatePage() {
 
   useEffect(() => {
     if (!id) return
-    fetch(`http://localhost:8000/api/v1/verifications/${id}/certificate`, {
+    fetch(apiUrl(`/api/v1/verifications/${id}/certificate`), {
       headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" },
     })
       .then(r => r.json())

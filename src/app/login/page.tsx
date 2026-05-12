@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ShieldCheck } from "lucide-react"
+import { apiUrl } from "@/lib/api-base"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -23,7 +24,7 @@ export default function LoginPage() {
     setError("")
 
     try {
-      const res = await fetch("http://localhost:8000/api/v1/login", {
+      const res = await fetch(apiUrl("/api/v1/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify({ email, password }),

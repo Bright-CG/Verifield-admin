@@ -9,6 +9,7 @@ import {
   TableHeader, TableRow,
 } from "@/components/ui/table"
 import { ShieldCheck, Search, RefreshCw, AlertTriangle, Info } from "lucide-react"
+import { apiUrl } from "@/lib/api-base"
 
 interface AuditLog {
   id: string
@@ -57,7 +58,7 @@ export default function AuditLogPage() {
       if (from)   params.set("from", from)
       if (to)     params.set("to", to)
 
-      const res = await fetch(`http://localhost:8000/api/v1/audit-logs?${params}`, {
+      const res = await fetch(apiUrl(`/api/v1/audit-logs?${params}`), {
         headers: {
           "Accept": "application/json",
           "Authorization": `Bearer ${token}`,

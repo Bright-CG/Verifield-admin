@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from "react"
 import dynamic from "next/dynamic"
 import { Card } from "@/components/ui/card"
 import { SignalHigh, WifiOff, MapPin, CheckCircle2 } from "lucide-react"
+import { apiUrl, getReverbEchoConfig } from "@/lib/api-base"
 
 const MapWithNoSSR = dynamic(() => import("@/components/LiveMap"), {
   ssr: false,
@@ -78,7 +79,7 @@ export default function MapDashboardPage() {
 
     const loadUnits = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/v1/hierarchy", {
+        const res = await fetch(apiUrl("/api/v1/hierarchy"), {
           headers: {
             Accept: "application/json",
             Authorization: `Bearer ${token}`,
@@ -124,14 +125,15 @@ export default function MapDashboardPage() {
 
         ;(window as any).Pusher = Pusher
 
+        const rv = getReverbEchoConfig()
         echo = new Echo({
           broadcaster: "reverb",
-          key: "verifield-key-local",
-          wsHost: "localhost",
-          wsPort: 8080,
-          wssPort: 8080,
-          forceTLS: false,
-          enabledTransports: ["ws"],
+          key: rv.key,
+          wsHost: rv.wsHost,
+          wsPort: rv.wsPort,
+          wssPort: rv.wssPort,
+          forceTLS: rv.forceTLS,
+          enabledTransports: rv.enabledTransports,
         })
 
         echo

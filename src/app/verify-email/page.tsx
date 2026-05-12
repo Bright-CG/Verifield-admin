@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
+import { apiUrl } from "@/lib/api-base"
 
 function VerifyEmailContent() {
   const params = useSearchParams()
@@ -21,7 +22,7 @@ function VerifyEmailContent() {
 
     const run = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/v1/email/verify", {
+        const res = await fetch(apiUrl("/api/v1/email/verify"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

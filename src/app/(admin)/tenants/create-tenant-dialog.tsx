@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { apiUrl } from "@/lib/api-base"
 
 interface CreateTenantDialogProps {
   open: boolean
@@ -33,7 +34,7 @@ export function CreateTenantDialog({ open, onOpenChange, onSuccess }: CreateTena
     setLoading(true)
 
     try {
-      const res = await fetch("http://localhost:8000/api/v1/tenants", {
+      const res = await fetch(apiUrl("/api/v1/tenants"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { LayoutDashboard, Map, Users, FileText, LogOut, UserCheck, Upload, Settings } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { cn } from "@/lib/utils"
+import { apiUrl } from "@/lib/api-base"
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -36,7 +37,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     const token = localStorage.getItem("vf_token") ?? ""
     if (!token) return
-    fetch("http://localhost:8000/api/v1/me", {
+    fetch(apiUrl("/api/v1/me"), {
       headers: {
         Accept: "application/json",
         Authorization: `Bearer ${token}`,

@@ -7,6 +7,7 @@ import {
   Upload, FileText, CheckCircle2, AlertTriangle,
   Download, Users, MapPin
 } from "lucide-react"
+import { apiUrl } from "@/lib/api-base"
 
 type ImportType = "units" | "staff"
 
@@ -62,8 +63,8 @@ export default function ImportPage() {
       formData.append("file", file)
 
       const endpoint = activeTab === "units"
-        ? "http://localhost:8000/api/v1/import/units"
-        : "http://localhost:8000/api/v1/import/staff"
+        ? apiUrl("/api/v1/import/units")
+        : apiUrl("/api/v1/import/staff")
 
       const res = await fetch(endpoint, {
         method: "POST",

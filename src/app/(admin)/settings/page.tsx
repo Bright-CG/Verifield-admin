@@ -10,6 +10,7 @@ import {
   Settings, Palette, CreditCard, ShieldCheck,
   Save, RefreshCw, AlertCircle, ImageIcon
 } from "lucide-react"
+import { apiUrl } from "@/lib/api-base"
 
 interface SystemConfig {
   app_name: string
@@ -70,7 +71,7 @@ export default function SettingsPage() {
   const token = typeof window !== "undefined" ? localStorage.getItem("vf_token") : ""
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/v1/config", {
+    fetch(apiUrl("/api/v1/config"), {
       headers: { "Accept": "application/json" }
     })
       .then(r => r.json())
@@ -97,7 +98,7 @@ export default function SettingsPage() {
     setSaving(true)
     setError("")
     try {
-      const res = await fetch("http://localhost:8000/api/v1/admin/config", {
+      const res = await fetch(apiUrl("/api/v1/admin/config"), {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,

@@ -13,6 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Plus, Settings2, ShieldCheck, Activity } from "lucide-react"
 import { CreateTenantDialog } from "./create-tenant-dialog"
+import { apiUrl } from "@/lib/api-base"
 
 export default function TenantsPage() {
   const [tenants, setTenants] = useState<any[]>([])
@@ -23,7 +24,7 @@ export default function TenantsPage() {
     setLoading(true)
     try {
       const token = localStorage.getItem("vf_token")
-      const res = await fetch("http://localhost:8000/api/v1/tenants", {
+      const res = await fetch(apiUrl("/api/v1/tenants"), {
         headers: {
           "Accept": "application/json",
           "Authorization": token ? `Bearer ${token}` : "",

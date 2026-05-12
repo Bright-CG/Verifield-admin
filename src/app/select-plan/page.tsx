@@ -4,6 +4,7 @@ import React, { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2, ChevronRight, ShieldCheck } from "lucide-react"
+import { apiUrl } from "@/lib/api-base"
 
 const plans = [
   {
@@ -46,7 +47,7 @@ export default function SelectPlanPage() {
 
     try {
       const token = localStorage.getItem("vf_token")
-      const res = await fetch("http://localhost:8000/api/v1/subscription", {
+      const res = await fetch(apiUrl("/api/v1/subscription"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -1,6 +1,7 @@
 # Deploy to server: rsync → /home/verifield/admin/
 # Secrets: VERIFIELD_HOST, VERIFIELD_PORT (optional, default 22), VERIFIELD_USER,
-#          VERIFIELD_SSH_KEY (full private key with real newlines), VERIFIELD_PASSPHRASE (if key encrypted)
+# Rsync only — avoid recursive chmod on the deploy tree (avoids permission errors
+# on node_modules, .next, or system-owned paths).
 name: Deploy admin
 
 on:
@@ -25,7 +26,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy via rsync + fix permissions
+      - name: Deploy via rsync
         env:
           SSH_PRIVATE_KEY: ${{ secrets.VERIFIELD_SSH_KEY }}
           SSH_PASSPHRASE: ${{ secrets.VERIFIELD_PASSPHRASE }}
@@ -79,6 +80,3 @@ jobs:
             --exclude='.env' \
             --exclude='.env.*' \
             ./ "${REMOTE}:${DEST}"
-
-          ssh ${SSH_BASE} "${REMOTE}" \
-            "find ${DEST} -type d -exec chmod 755 {} + && find ${DEST} -type f -exec chmod 644 {} +"

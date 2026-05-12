@@ -15,6 +15,7 @@ import {
 import { Card } from "@/components/ui/card"
 import { Plus, CheckCircle2, Clock, Copy, X } from "lucide-react"
 import { STATE_NAMES, getLGAsForState } from "@/lib/nigeria-lgas"
+import { apiUrl } from "@/lib/api-base"
 
 interface Staff {
   id: string
@@ -175,7 +176,7 @@ export default function StaffPage() {
     setLoading(true)
     try {
       const query = search.trim() ? `?q=${encodeURIComponent(search.trim())}` : ""
-      const res = await fetch(`http://localhost:8000/api/v1/staff${query}`, {
+      const res = await fetch(apiUrl(`/api/v1/staff${query}`), {
         headers: {
           "Accept": "application/json",
           "Authorization": `Bearer ${token}`,
@@ -201,7 +202,7 @@ export default function StaffPage() {
       if (params?.ward) qs.set("ward", normalizeGeo(params.ward))
       qs.set("limit", "5000")
 
-      const res = await fetch(`http://localhost:8000/api/v1/hierarchy?${qs.toString()}`, {
+      const res = await fetch(apiUrl(`/api/v1/hierarchy?${qs.toString()}`), {
         headers: {
           "Accept": "application/json",
           "Authorization": `Bearer ${token}`,
@@ -231,7 +232,7 @@ export default function StaffPage() {
 
   const fetchMe = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/v1/me", {
+      const res = await fetch(apiUrl("/api/v1/me"), {
         headers: {
           "Accept": "application/json",
           "Authorization": `Bearer ${token}`,
@@ -260,7 +261,7 @@ export default function StaffPage() {
     const authToken = typeof window !== "undefined" ? localStorage.getItem("vf_token") ?? "" : ""
     if (!authToken) return
     const qs = new URLSearchParams({ limit: "1" })
-    fetch(`http://localhost:8000/api/v1/hierarchy?${qs.toString()}`, {
+    fetch(apiUrl(`/api/v1/hierarchy?${qs.toString()}`), {
       headers: {
         Accept: "application/json",
         Authorization: `Bearer ${authToken}`,
@@ -290,7 +291,7 @@ export default function StaffPage() {
 
   const handleGenerateDeviceCode = async (member: Staff) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/staff/${member.id}/device-reset-token`, {
+      const res = await fetch(apiUrl(`/api/v1/staff/${member.id}/device-reset-token`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -334,7 +335,7 @@ export default function StaffPage() {
       })
     }
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/staff/${member.id}`, {
+      const res = await fetch(apiUrl(`/api/v1/staff/${member.id}`), {
         headers: {
           "Accept": "application/json",
           "Authorization": `Bearer ${token}`,
@@ -362,7 +363,7 @@ export default function StaffPage() {
     setEditingStaff(true)
     setError("")
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/staff/${selectedStaff.id}`, {
+      const res = await fetch(apiUrl(`/api/v1/staff/${selectedStaff.id}`), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -415,7 +416,7 @@ export default function StaffPage() {
     setSubmitting(true)
     setError("")
     try {
-      const res = await fetch("http://localhost:8000/api/v1/staff", {
+      const res = await fetch(apiUrl("/api/v1/staff"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

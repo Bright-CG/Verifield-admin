@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Building2 } from "lucide-react"
+import { apiUrl } from "@/lib/api-base"
 
 export default function SignupPage() {
   const router = useRouter()
@@ -32,7 +33,7 @@ export default function SignupPage() {
     setError("")
 
     try {
-      const res = await fetch("http://localhost:8000/api/v1/register", {
+      const res = await fetch(apiUrl("/api/v1/register"), {
         method: "POST",
         headers: { "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify(form),

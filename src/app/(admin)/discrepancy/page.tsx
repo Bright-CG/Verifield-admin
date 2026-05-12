@@ -11,6 +11,7 @@ import {
 import {
   AlertTriangle, CheckCircle2, RefreshCw, ShieldAlert, Search
 } from "lucide-react"
+import { apiUrl } from "@/lib/api-base"
 
 interface DiscrepancyRow {
   unit_id: string
@@ -64,7 +65,7 @@ export default function DiscrepancyPage() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch("http://localhost:8000/api/v1/discrepancies", {
+      const res = await fetch(apiUrl("/api/v1/discrepancies"), {
         headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" },
       })
       if (res.ok) {
