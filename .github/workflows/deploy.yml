@@ -64,7 +64,7 @@ jobs:
           ssh-add -l
 
           # accept-new: trust host on first connect if keyscan could not pre-populate (common on restricted networks)
-          SSH_BASE="-p ${PORT} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${HOME}/.ssh/known_hosts"
+          SSH_BASE="-i ${HOME}/.ssh/deploy_key -p ${PORT} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${HOME}/.ssh/known_hosts"
           REMOTE="${DEPLOY_USER}@${DEPLOY_HOST}"
           DEST="/home/verifield/admin/"
 
