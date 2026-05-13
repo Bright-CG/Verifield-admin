@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,7 +13,7 @@ import {
   DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
 import { Card } from "@/components/ui/card"
-import { Plus, CheckCircle2, Clock, Copy, X } from "lucide-react"
+import { Plus, CheckCircle2, Clock, Copy, X, Loader2 } from "lucide-react"
 import { STATE_NAMES, getLGAsForState } from "@/lib/nigeria-lgas"
 import { apiUrl } from "@/lib/api-base"
 
@@ -27,7 +27,9 @@ interface Staff {
   assigned_lga: string | null
   assigned_ward: string | null
   assigned_unit_id?: string | null
+  assigned_polling_unit_id?: string | null
   assigned_unit?: { id: string; name: string } | null
+  assigned_polling_unit?: { id: string; name: string } | null
   created_at: string
 }
 
@@ -39,12 +41,10 @@ interface MeResponse {
   }
 }
 
-interface UnitOption {
+interface LocRow {
   id: string
-  name: string
-  state?: string | null
-  lga?: string | null
-  ward?: string | null
+  slug: string
+  name?: string | null
 }
 
 interface NewCredentials {
@@ -80,19 +80,7 @@ const SelectField = ({
   </div>
 )
 
-const normalizeGeo = (value?: string | null) =>
-  (value ?? "")
-    .toLowerCase()
-    .trim()
-    .replace(/[_\s]+/g, "-")
-    .replace(/-+/g, "-")
-
-/** Imported INEC-style JSON uses `abuja` as state slug; UI uses "FCT (Abuja)". */
-const stateSlugForDataset = (displayState: string) => {
-  const n = normalizeGeo(displayState)
-  if (n === "fct-(abuja)" || n === "fct-abuja") return "abuja"
-  return n
-}
+const locLabel = (r: LocRow) => (r.name && r.name.trim() !== "" ? r.name : r.slug.replace(/-/g, " "))
 
 export default function StaffPage() {
   const [staff, setStaff] = useState<Staff[]>([])
@@ -101,8 +89,6 @@ export default function StaffPage() {
   const [credentials, setCredentials] = useState<NewCredentials | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
-  const [units, setUnits] = useState<UnitOption[]>([])
-  const [referenceGeographyCount, setReferenceGeographyCount] = useState<number | null>(null)
   const [tenantType, setTenantType] = useState<"election" | "corporate">("corporate")
   const [search, setSearch] = useState("")
   const [deviceCode, setDeviceCode] = useState<{ staffId: string; token: string; expires_at: string } | null>(null)
@@ -123,171 +109,139 @@ export default function StaffPage() {
     email: "",
     assigned_state: "",
     assigned_lga: "",
-    assigned_ward: "",
-    assigned_unit_id: "",
   })
 
-  // Derived geographic options
-  const lgas = form.assigned_state ? getLGAsForState(form.assigned_state) : []
-  const datasetSelectedState = form.assigned_state ? stateSlugForDataset(form.assigned_state) : ""
-  const normalizedSelectedLga = normalizeGeo(form.assigned_lga)
-  const normalizedSelectedWard = normalizeGeo(form.assigned_ward)
-  const wardOptions = Array.from(new Set(
-    units
-      .filter((u) => !datasetSelectedState || normalizeGeo(u.state) === datasetSelectedState)
-      .filter((u) => !normalizedSelectedLga || normalizeGeo(u.lga) === normalizedSelectedLga)
-      .map((u) => u.ward)
-      .filter(Boolean) as string[]
-  ))
-  const puOptions = units.filter((u) =>
-    (!datasetSelectedState || normalizeGeo(u.state) === datasetSelectedState) &&
-    (!normalizedSelectedLga || normalizeGeo(u.lga) === normalizedSelectedLga) &&
-    (!normalizedSelectedWard || normalizeGeo(u.ward) === normalizedSelectedWard)
-  )
-  const detailLgas = staffForm.assigned_state ? getLGAsForState(staffForm.assigned_state) : []
-  const datasetDetailState = staffForm.assigned_state ? stateSlugForDataset(staffForm.assigned_state) : ""
-  const normalizedDetailLga = normalizeGeo(staffForm.assigned_lga)
-  const normalizedDetailWard = normalizeGeo(staffForm.assigned_ward)
-  const detailWardOptions = Array.from(new Set(
-    units
-      .filter((u) => !datasetDetailState || normalizeGeo(u.state) === datasetDetailState)
-      .filter((u) => !normalizedDetailLga || normalizeGeo(u.lga) === normalizedDetailLga)
-      .map((u) => u.ward)
-      .filter(Boolean) as string[]
-  ))
-  const detailPuOptions = units.filter((u) =>
-    (!datasetDetailState || normalizeGeo(u.state) === datasetDetailState) &&
-    (!normalizedDetailLga || normalizeGeo(u.lga) === normalizedDetailLga) &&
-    (!normalizedDetailWard || normalizeGeo(u.ward) === normalizedDetailWard)
-  )
+  const [geoStates, setGeoStates] = useState<LocRow[]>([])
+  const [geoLgas, setGeoLgas] = useState<LocRow[]>([])
+  const [geoWards, setGeoWards] = useState<LocRow[]>([])
+  const [geoPus, setGeoPus] = useState<LocRow[]>([])
+  const [selStateId, setSelStateId] = useState("")
+  const [selLgaId, setSelLgaId] = useState("")
+  const [selWardId, setSelWardId] = useState("")
+  const [selPuId, setSelPuId] = useState("")
+  const [geoLoad, setGeoLoad] = useState({ states: false, lgas: false, wards: false, pus: false })
 
   const token = typeof window !== "undefined" ? localStorage.getItem("vf_token") : ""
   const isElectionMode = tenantType === "election"
   const entityLabel = isElectionMode ? "Agent" : "Staff"
   const entityLabelLower = isElectionMode ? "agent" : "staff"
 
-  const debugLog = (hypothesisId: string, location: string, message: string, data: Record<string, unknown>) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7605/ingest/4755a3ff-bbc6-43a7-9293-b8b2aa6f5e15',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'093afd'},body:JSON.stringify({sessionId:'093afd',runId:'staff-form-debug-1',hypothesisId,location,message,data,timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
+  const authHeaders = {
+    Accept: "application/json",
+    Authorization: `Bearer ${token}`,
   }
 
   const fetchStaff = async () => {
     setLoading(true)
     try {
       const query = search.trim() ? `?q=${encodeURIComponent(search.trim())}` : ""
-      const res = await fetch(apiUrl(`/api/v1/staff${query}`), {
-        headers: {
-          "Accept": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-      })
+      const res = await fetch(apiUrl(`/api/v1/staff${query}`), { headers: authHeaders })
       if (res.ok) {
         const json = await res.json()
         setStaff(json.data ?? [])
       }
-    } catch { /* backend offline */ }
+    } catch { /* offline */ }
     finally { setLoading(false) }
-  }
-
-  const fetchUnits = async (params?: { state?: string; lga?: string; ward?: string }) => {
-    try {
-      debugLog("H1", "staff/page.tsx:fetchUnits:start", "fetchUnits called", {
-        params: params ?? null,
-        isElectionMode,
-      })
-      const qs = new URLSearchParams()
-      if (params?.state) qs.set("state", stateSlugForDataset(params.state))
-      if (params?.lga) qs.set("lga", normalizeGeo(params.lga))
-      if (params?.ward) qs.set("ward", normalizeGeo(params.ward))
-      qs.set("limit", "5000")
-
-      const res = await fetch(apiUrl(`/api/v1/hierarchy?${qs.toString()}`), {
-        headers: {
-          "Accept": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-      })
-      if (!res.ok) return
-      const json = await res.json()
-      const fetchedUnits = json?.data?.units ?? []
-      const refGc = json?.data?.reference_geography_count
-      if (typeof refGc === "number") setReferenceGeographyCount(refGc)
-      setUnits(fetchedUnits)
-      debugLog("H2", "staff/page.tsx:fetchUnits:result", "units fetched", {
-        count: fetchedUnits.length,
-        reference_geography_count: refGc ?? null,
-        sample: fetchedUnits.slice(0, 3).map((u: UnitOption) => ({ state: u.state, lga: u.lga, ward: u.ward, name: u.name })),
-        normalizedFilters: {
-          state: params?.state ? stateSlugForDataset(params.state) : null,
-          lga: params?.lga ? normalizeGeo(params.lga) : null,
-          ward: params?.ward ? normalizeGeo(params.ward) : null,
-        },
-      })
-    } catch {
-      // ignore offline
-      debugLog("H5", "staff/page.tsx:fetchUnits:error", "fetchUnits failed", { hasToken: Boolean(token) })
-    }
   }
 
   const fetchMe = async () => {
     try {
-      const res = await fetch(apiUrl("/api/v1/me"), {
-        headers: {
-          "Accept": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-      })
+      const res = await fetch(apiUrl("/api/v1/me"), { headers: authHeaders })
       if (!res.ok) return
       const json = (await res.json()) as MeResponse
       const type = json?.user?.tenant?.type
       if (type === "election" || type === "corporate") {
         setTenantType(type)
       }
-      debugLog("H4", "staff/page.tsx:fetchMe", "tenant type loaded", {
-        type: type ?? null,
-      })
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
   }
+
+  const loadStates = useCallback(async () => {
+    if (!token) return
+    setGeoLoad((g) => ({ ...g, states: true }))
+    try {
+      const res = await fetch(apiUrl("/api/v1/locations/states"), { headers: authHeaders })
+      if (!res.ok) return
+      const json = await res.json()
+      setGeoStates((json.data ?? []) as LocRow[])
+    } finally {
+      setGeoLoad((g) => ({ ...g, states: false }))
+    }
+  }, [token])
 
   useEffect(() => {
     fetchMe()
   }, [])
 
   useEffect(() => {
-    if (!isElectionMode) return
-    const authToken = typeof window !== "undefined" ? localStorage.getItem("vf_token") ?? "" : ""
-    if (!authToken) return
-    const qs = new URLSearchParams({ limit: "1" })
-    fetch(apiUrl(`/api/v1/hierarchy?${qs.toString()}`), {
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${authToken}`,
-      },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((json) => {
-        const refGc = json?.data?.reference_geography_count
-        if (typeof refGc === "number") {
-          setReferenceGeographyCount(refGc)
-          // #region agent log
-          debugLog("H8", "staff/page.tsx:bootstrapTenantCount", "reference geography from hierarchy", {
-            reference_geography_count: refGc,
-          })
-          // #endregion
-        }
-      })
-      .catch(() => {})
-  }, [isElectionMode])
+    fetchStaff()
+  }, [search])
 
   useEffect(() => {
-    fetchStaff()
-    // #region agent log
-    debugLog("H6", "staff/page.tsx:useEffect:search", "search-triggered staff refresh", { search })
-    // #endregion
-  }, [search])
+    if (!isDialogOpen || !isElectionMode || !token) return
+    setSelStateId("")
+    setSelLgaId("")
+    setSelWardId("")
+    setSelPuId("")
+    setGeoLgas([])
+    setGeoWards([])
+    setGeoPus([])
+    void loadStates()
+  }, [isDialogOpen, isElectionMode, token, loadStates])
+
+  useEffect(() => {
+    if (!isElectionMode || !selStateId || !token) {
+      setGeoLgas([])
+      return
+    }
+    let cancelled = false
+    setGeoLoad((g) => ({ ...g, lgas: true }))
+    fetch(apiUrl(`/api/v1/locations/lgas/${selStateId}`), { headers: authHeaders })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (!cancelled && json?.data) setGeoLgas(json.data as LocRow[])
+      })
+      .finally(() => {
+        if (!cancelled) setGeoLoad((g) => ({ ...g, lgas: false }))
+      })
+    return () => { cancelled = true }
+  }, [isElectionMode, selStateId, token])
+
+  useEffect(() => {
+    if (!isElectionMode || !selLgaId || !token) {
+      setGeoWards([])
+      return
+    }
+    let cancelled = false
+    setGeoLoad((g) => ({ ...g, wards: true }))
+    fetch(apiUrl(`/api/v1/locations/wards/${selLgaId}`), { headers: authHeaders })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (!cancelled && json?.data) setGeoWards(json.data as LocRow[])
+      })
+      .finally(() => {
+        if (!cancelled) setGeoLoad((g) => ({ ...g, wards: false }))
+      })
+    return () => { cancelled = true }
+  }, [isElectionMode, selLgaId, token])
+
+  useEffect(() => {
+    if (!isElectionMode || !selWardId || !token) {
+      setGeoPus([])
+      return
+    }
+    let cancelled = false
+    setGeoLoad((g) => ({ ...g, pus: true }))
+    fetch(apiUrl(`/api/v1/locations/polling-units/${selWardId}`), { headers: authHeaders })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (!cancelled && json?.data) setGeoPus(json.data as LocRow[])
+      })
+      .finally(() => {
+        if (!cancelled) setGeoLoad((g) => ({ ...g, pus: false }))
+      })
+    return () => { cancelled = true }
+  }, [isElectionMode, selWardId, token])
 
   const handleGenerateDeviceCode = async (member: Staff) => {
     try {
@@ -295,8 +249,8 @@ export default function StaffPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
-          "Authorization": `Bearer ${token}`,
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ send_email: true, expires_in_hours: 4 }),
       })
@@ -327,20 +281,8 @@ export default function StaffPage() {
       assigned_unit_id: member.assigned_unit_id ?? "",
     })
     setIsDetailDrawerOpen(true)
-    if (isElectionMode && member.assigned_state) {
-      fetchUnits({
-        state: member.assigned_state,
-        lga: member.assigned_lga ?? undefined,
-        ward: member.assigned_ward ?? undefined,
-      })
-    }
     try {
-      const res = await fetch(apiUrl(`/api/v1/staff/${member.id}`), {
-        headers: {
-          "Accept": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-      })
+      const res = await fetch(apiUrl(`/api/v1/staff/${member.id}`), { headers: authHeaders })
       if (!res.ok) return
       const json = await res.json()
       const detail = json?.data as Staff
@@ -353,9 +295,7 @@ export default function StaffPage() {
         assigned_ward: detail.assigned_ward ?? "",
         assigned_unit_id: detail.assigned_unit_id ?? "",
       })
-    } catch {
-      // keep optimistic data
-    }
+    } catch { /* keep optimistic */ }
   }
 
   const handleSaveStaffDetails = async () => {
@@ -363,14 +303,17 @@ export default function StaffPage() {
     setEditingStaff(true)
     setError("")
     try {
+      const body = isElectionMode
+        ? { name: staffForm.name, email: staffForm.email }
+        : staffForm
       const res = await fetch(apiUrl(`/api/v1/staff/${selectedStaff.id}`), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
-          "Authorization": `Bearer ${token}`,
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(staffForm),
+        body: JSON.stringify(body),
       })
       const json = await res.json()
       if (!res.ok) {
@@ -378,7 +321,7 @@ export default function StaffPage() {
         return
       }
       await fetchStaff()
-      setSelectedStaff((prev) => prev ? { ...prev, ...json.data } : prev)
+      setSelectedStaff((prev) => (prev ? { ...prev, ...json.data } : prev))
       setIsDetailDrawerOpen(false)
     } catch {
       setError("Failed to update staff profile.")
@@ -387,59 +330,58 @@ export default function StaffPage() {
     }
   }
 
-  const handleStateChange = (state: string) => {
-    setForm({ ...form, assigned_state: state, assigned_lga: "", assigned_ward: "", assigned_unit_id: "" })
-    debugLog("H3", "staff/page.tsx:handleStateChange", "state selected", {
-      selectedState: state,
-    })
-    if (isElectionMode && state) {
-      fetchUnits({ state })
-    }
-  }
-
-  useEffect(() => {
-    if (!isElectionMode) return
-    debugLog("H3", "staff/page.tsx:derivedOptions", "derived options recomputed", {
-      selectedState: form.assigned_state,
-      selectedLga: form.assigned_lga,
-      selectedWard: form.assigned_ward,
-      unitsCount: units.length,
-      wardCount: wardOptions.length,
-      puCount: puOptions.length,
-      wardSample: wardOptions.slice(0, 5),
-      puSample: puOptions.slice(0, 3).map((u) => u.name),
-    })
-  }, [isElectionMode, form.assigned_state, form.assigned_lga, form.assigned_ward, units, wardOptions, puOptions])
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
     setError("")
     try {
+      const payload = isElectionMode
+        ? {
+            name: form.name,
+            email: form.email,
+            assigned_polling_unit_id: selPuId,
+          }
+        : {
+            name: form.name,
+            email: form.email,
+            assigned_state: form.assigned_state,
+            assigned_lga: form.assigned_lga,
+          }
+      if (isElectionMode && !selPuId) {
+        setError("Please select a polling unit.")
+        setSubmitting(false)
+        return
+      }
       const res = await fetch(apiUrl("/api/v1/staff"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
-          "Authorization": `Bearer ${token}`,
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (res.ok) {
         setCredentials({ email: data.data.email, temp_password: data.data.temp_password })
         fetchStaff()
         setIsDialogOpen(false)
-        setForm({ name: "", email: "", assigned_state: "", assigned_lga: "", assigned_ward: "", assigned_unit_id: "" })
+        setForm({ name: "", email: "", assigned_state: "", assigned_lga: "" })
+        setSelStateId("")
+        setSelLgaId("")
+        setSelWardId("")
+        setSelPuId("")
       } else {
         setError(data.message || "Failed to create staff member.")
       }
     } catch {
-      setError("Network error. Is the backend running?")
+      setError("Network error. Is the Laravel backend running?")
     } finally {
       setSubmitting(false)
     }
   }
+
+  const lgas = form.assigned_state ? getLGAsForState(form.assigned_state) : []
 
   return (
     <div className="space-y-6">
@@ -462,21 +404,6 @@ export default function StaffPage() {
         />
       </div>
 
-      {isElectionMode && referenceGeographyCount === 0 && (
-        <div className="p-4 rounded-lg border border-amber-500/40 bg-amber-500/10 text-sm text-amber-200">
-          Nationwide polling-unit reference data is not loaded yet (empty shared catalogue).
-          Ward and PU dropdowns pull from this catalogue for all election organisations.
-          From the repo root, run once (creates the reference tenant row if missing, then loads units):
-          <code className="block mt-2 rounded bg-muted px-2 py-1 text-xs break-all">
-            cd verifield_backend &amp;&amp; php artisan verifield:import-nigeria-geo ../states-and-lgas-and-wards-and-polling-units.json
-          </code>
-          <span className="block mt-2 text-muted-foreground">
-            Use your real path if the JSON lives elsewhere. Default import tenant is <code className="text-xs">VERIFIELD_REFERENCE_TENANT_ID</code> (no org UUID needed). Optional new PUs can be added per org via bulk upload.
-          </span>
-        </div>
-      )}
-
-      {/* One-time Credentials Banner */}
       {credentials && (
         <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 flex items-start justify-between gap-4">
           <div>
@@ -528,7 +455,6 @@ export default function StaffPage() {
         </div>
       )}
 
-      {/* Staff Table */}
       <Card className="border-border">
         <Table>
           <TableHeader>
@@ -567,7 +493,9 @@ export default function StaffPage() {
                   <TableCell className="text-sm">{member.assigned_state || "—"}</TableCell>
                   <TableCell className="text-sm">{member.assigned_lga || "—"}</TableCell>
                   <TableCell className="text-sm">{member.assigned_ward || "—"}</TableCell>
-                  <TableCell className="text-sm">{member.assigned_unit?.name || "—"}</TableCell>
+                  <TableCell className="text-sm">
+                    {member.assigned_polling_unit?.name || member.assigned_unit?.name || "—"}
+                  </TableCell>
                   <TableCell>
                     {member.email_verified_at ? (
                       <span className="flex items-center gap-1 text-xs text-emerald-500">
@@ -587,18 +515,10 @@ export default function StaffPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openStaffDrawer(member)}
-                      >
+                      <Button size="sm" variant="outline" onClick={() => openStaffDrawer(member)}>
                         View / Edit
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleGenerateDeviceCode(member)}
-                      >
+                      <Button size="sm" variant="outline" onClick={() => handleGenerateDeviceCode(member)}>
                         Generate Device Code
                       </Button>
                     </div>
@@ -610,7 +530,6 @@ export default function StaffPage() {
         </Table>
       </Card>
 
-      {/* Add Staff/Agent Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-md bg-card border-border">
           <DialogHeader>
@@ -646,65 +565,124 @@ export default function StaffPage() {
               />
             </div>
 
-            {/* Cascading State → LGA */}
-            <SelectField
-              id="s-state"
-              label="State"
-              value={form.assigned_state}
-              onChange={handleStateChange}
-              options={STATE_NAMES}
-              placeholder="Select a State..."
-            />
-
-            <SelectField
-              id="s-lga"
-              label="Local Government Area (LGA)"
-              value={form.assigned_lga}
-              onChange={(v) => {
-                setForm({ ...form, assigned_lga: v, assigned_ward: "", assigned_unit_id: "" })
-                debugLog("H3", "staff/page.tsx:handleLgaChange", "lga selected", {
-                  selectedState: form.assigned_state,
-                  selectedLga: v,
-                })
-                if (isElectionMode && v) fetchUnits({ state: form.assigned_state, lga: v })
-              }}
-              options={lgas}
-              placeholder={form.assigned_state ? "Select an LGA..." : "Select a State first"}
-              disabled={!form.assigned_state}
-            />
-
-            {isElectionMode && (
+            {!isElectionMode && (
               <>
                 <SelectField
-                  id="s-ward"
-                  label="Ward"
-                  value={form.assigned_ward}
-                  onChange={(v) => {
-                    setForm({ ...form, assigned_ward: v, assigned_unit_id: "" })
-                    if (v) fetchUnits({ state: form.assigned_state, lga: form.assigned_lga, ward: v })
-                  }}
-                  options={wardOptions}
-                  placeholder={form.assigned_lga ? "Select a ward..." : "Select an LGA first"}
-                  disabled={!form.assigned_lga}
+                  id="s-state"
+                  label="State"
+                  value={form.assigned_state}
+                  onChange={(v) => setForm({ ...form, assigned_state: v, assigned_lga: "" })}
+                  options={STATE_NAMES}
+                  placeholder="Select a State..."
                 />
+                <SelectField
+                  id="s-lga"
+                  label="Local Government Area (LGA)"
+                  value={form.assigned_lga}
+                  onChange={(v) => setForm({ ...form, assigned_lga: v })}
+                  options={lgas}
+                  placeholder={form.assigned_state ? "Select an LGA..." : "Select a State first"}
+                  disabled={!form.assigned_state}
+                />
+              </>
+            )}
+
+            {isElectionMode && (
+              <div className="space-y-4 border border-border rounded-lg p-3">
+                <p className="text-xs text-muted-foreground">Select State → LGA → Ward → Polling Unit (from national catalogue).</p>
 
                 <div className="space-y-2">
-                  <Label htmlFor="s-unit">Polling Unit (Required for election mode)</Label>
-                  <select
-                    id="s-unit"
-                    value={form.assigned_unit_id}
-                    onChange={(e) => setForm({ ...form, assigned_unit_id: e.target.value })}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
-                  >
-                    <option value="">Select polling unit...</option>
-                    {puOptions.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name}
-                      </option>
-                    ))}
-                  </select>
+                  <Label>State</Label>
+                  <div className="relative">
+                    <select
+                      value={selStateId}
+                      disabled={geoLoad.states}
+                      onChange={(e) => {
+                        setSelStateId(e.target.value)
+                        setSelLgaId("")
+                        setSelWardId("")
+                        setSelPuId("")
+                      }}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">{geoLoad.states ? "Loading…" : "Select state…"}</option>
+                      {geoStates.map((s) => (
+                        <option key={s.id} value={s.id}>{locLabel(s)}</option>
+                      ))}
+                    </select>
+                    {geoLoad.states && (
+                      <Loader2 className="absolute right-8 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
                 </div>
-              </>
+
+                <div className="space-y-2">
+                  <Label>LGA</Label>
+                  <div className="relative">
+                    <select
+                      value={selLgaId}
+                      disabled={!selStateId || geoLoad.lgas}
+                      onChange={(e) => {
+                        setSelLgaId(e.target.value)
+                        setSelWardId("")
+                        setSelPuId("")
+                      }}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
+                    >
+                      <option value="">{!selStateId ? "Select state first" : geoLoad.lgas ? "Loading…" : "Select LGA…"}</option>
+                      {geoLgas.map((x) => (
+                        <option key={x.id} value={x.id}>{locLabel(x)}</option>
+                      ))}
+                    </select>
+                    {geoLoad.lgas && (
+                      <Loader2 className="absolute right-8 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Ward</Label>
+                  <div className="relative">
+                    <select
+                      value={selWardId}
+                      disabled={!selLgaId || geoLoad.wards}
+                      onChange={(e) => {
+                        setSelWardId(e.target.value)
+                        setSelPuId("")
+                      }}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
+                    >
+                      <option value="">{!selLgaId ? "Select LGA first" : geoLoad.wards ? "Loading…" : "Select ward…"}</option>
+                      {geoWards.map((x) => (
+                        <option key={x.id} value={x.id}>{locLabel(x)}</option>
+                      ))}
+                    </select>
+                    {geoLoad.wards && (
+                      <Loader2 className="absolute right-8 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Polling unit</Label>
+                  <div className="relative">
+                    <select
+                      value={selPuId}
+                      disabled={!selWardId || geoLoad.pus}
+                      onChange={(e) => setSelPuId(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
+                    >
+                      <option value="">{!selWardId ? "Select ward first" : geoLoad.pus ? "Loading…" : "Select polling unit…"}</option>
+                      {geoPus.map((x) => (
+                        <option key={x.id} value={x.id}>{locLabel(x)}</option>
+                      ))}
+                    </select>
+                    {geoLoad.pus && (
+                      <Loader2 className="absolute right-8 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
 
             {error && (
@@ -714,12 +692,7 @@ export default function StaffPage() {
             )}
 
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                className="border-border"
-                onClick={() => setIsDialogOpen(false)}
-              >
+              <Button type="button" variant="outline" className="border-border" onClick={() => setIsDialogOpen(false)}>
                 Cancel
               </Button>
               <Button
@@ -764,53 +737,35 @@ export default function StaffPage() {
               />
             </div>
 
-            <SelectField
-              id="d-state"
-              label="State"
-              value={staffForm.assigned_state}
-              onChange={(v) => setStaffForm({ ...staffForm, assigned_state: v, assigned_lga: "", assigned_ward: "", assigned_unit_id: "" })}
-              options={STATE_NAMES}
-              placeholder="Select a State..."
-            />
-
-            <SelectField
-              id="d-lga"
-              label="Local Government Area (LGA)"
-              value={staffForm.assigned_lga}
-              onChange={(v) => setStaffForm({ ...staffForm, assigned_lga: v, assigned_ward: "", assigned_unit_id: "" })}
-              options={detailLgas}
-              placeholder={staffForm.assigned_state ? "Select an LGA..." : "Select a State first"}
-              disabled={!staffForm.assigned_state}
-            />
-
-            {isElectionMode && (
+            {isElectionMode ? (
+              <div className="rounded-md border border-border p-3 text-sm space-y-1 text-muted-foreground">
+                <p><span className="font-medium text-foreground">State:</span> {selectedStaff.assigned_state || "—"}</p>
+                <p><span className="font-medium text-foreground">LGA:</span> {selectedStaff.assigned_lga || "—"}</p>
+                <p><span className="font-medium text-foreground">Ward:</span> {selectedStaff.assigned_ward || "—"}</p>
+                <p>
+                  <span className="font-medium text-foreground">Polling unit:</span>{" "}
+                  {selectedStaff.assigned_polling_unit?.name || selectedStaff.assigned_unit?.name || "—"}
+                </p>
+              </div>
+            ) : (
               <>
                 <SelectField
-                  id="d-ward"
-                  label="Ward"
-                  value={staffForm.assigned_ward}
-                  onChange={(v) => setStaffForm({ ...staffForm, assigned_ward: v, assigned_unit_id: "" })}
-                  options={detailWardOptions}
-                  placeholder={staffForm.assigned_lga ? "Select a ward..." : "Select an LGA first"}
-                  disabled={!staffForm.assigned_lga}
+                  id="d-state"
+                  label="State"
+                  value={staffForm.assigned_state}
+                  onChange={(v) => setStaffForm({ ...staffForm, assigned_state: v, assigned_lga: "" })}
+                  options={STATE_NAMES}
+                  placeholder="Select a State..."
                 />
-
-                <div className="space-y-2">
-                  <Label htmlFor="d-unit">Polling Unit</Label>
-                  <select
-                    id="d-unit"
-                    value={staffForm.assigned_unit_id}
-                    onChange={(e) => setStaffForm({ ...staffForm, assigned_unit_id: e.target.value })}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
-                  >
-                    <option value="">Select polling unit...</option>
-                    {detailPuOptions.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <SelectField
+                  id="d-lga"
+                  label="Local Government Area (LGA)"
+                  value={staffForm.assigned_lga}
+                  onChange={(v) => setStaffForm({ ...staffForm, assigned_lga: v })}
+                  options={staffForm.assigned_state ? getLGAsForState(staffForm.assigned_state) : []}
+                  placeholder={staffForm.assigned_state ? "Select an LGA..." : "Select a State first"}
+                  disabled={!staffForm.assigned_state}
+                />
               </>
             )}
 
@@ -830,16 +785,10 @@ export default function StaffPage() {
             </div>
 
             <div className="flex items-center justify-between gap-3">
-              <Button
-                variant="outline"
-                onClick={() => handleGenerateDeviceCode(selectedStaff)}
-              >
+              <Button variant="outline" onClick={() => handleGenerateDeviceCode(selectedStaff)}>
                 Generate Device Reset Code
               </Button>
-              <Button
-                disabled={editingStaff}
-                onClick={handleSaveStaffDetails}
-              >
+              <Button disabled={editingStaff} onClick={handleSaveStaffDetails}>
                 {editingStaff ? "Saving..." : "Save Changes"}
               </Button>
             </div>
