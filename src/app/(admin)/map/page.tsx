@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from "react"
 import dynamic from "next/dynamic"
 import { Card } from "@/components/ui/card"
 import { SignalHigh, WifiOff, MapPin, CheckCircle2 } from "lucide-react"
-import { apiUrl, getReverbEchoConfig } from "@/lib/api-base"
+import { getReverbEchoConfig } from "@/lib/api-base"
 
 const MapWithNoSSR = dynamic(() => import("@/components/LiveMap"), {
   ssr: false,
@@ -77,34 +77,10 @@ export default function MapDashboardPage() {
       return
     }
 
-    const loadUnits = async () => {
-      try {
-        const res = await fetch(apiUrl("/api/v1/hierarchy"), {
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        })
-        if (!res.ok) return
-        const json = await res.json()
-        const raw = json.data?.units ?? []
-        setUnits(
-          raw
-            .filter((u: any) => u.lat != null && u.long != null)
-            .map((u: any) => ({
-              id: u.id,
-              name: u.name,
-              lat: Number(u.lat),
-              lng: Number(u.long),
-              status: "Pending",
-            }))
-        )
-      } catch {
-        /* ignore — backend may be offline */
-      }
-    }
-
-    void loadUnits()
+    // Legacy GET /api/v1/hierarchy removed — it is incompatible with hybrid geography
+    // (state/lga slug query params + old units shape) and caused 500s in production.
+    // Map markers stay empty until a dedicated lightweight map endpoint exists.
+    setUnits([])
   }, [])
 
   useEffect(() => {

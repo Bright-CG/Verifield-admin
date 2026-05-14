@@ -75,6 +75,14 @@ function rowId(r: LocRow): string {
   return String(r.id)
 }
 
+/** True if `raw` looks like a DB primary key (UUID or integer), not a display slug. */
+function isCatalogueRowId(raw: string): boolean {
+  const id = raw.trim()
+  if (!id) return false
+  if (/^\d+$/.test(id)) return true
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+}
+
 function matchesSavedTerritory(row: LocRow, saved: string | null | undefined): boolean {
   if (!saved?.trim()) return false
   const want = saved.trim().toLowerCase()
@@ -219,6 +227,11 @@ export default function StaffPage() {
       setGeoLgas([])
       return
     }
+    if (!isCatalogueRowId(selStateId)) {
+      setGeoLgas([])
+      setGeoFetchError("Invalid state selection. Pick a state from the dropdown (server id), not a slug name.")
+      return
+    }
     let cancelled = false
     setGeoLoad((g) => ({ ...g, lgas: true }))
     setGeoFetchError("")
@@ -254,8 +267,13 @@ export default function StaffPage() {
   }, [selStateId, token, authHeaders])
 
   useEffect(() => {
-    if (!isElectionMode || !selLgaId || !token) {
+    if (!isDialogOpen || !selLgaId || !token) {
       setGeoWards([])
+      return
+    }
+    if (!isCatalogueRowId(selLgaId)) {
+      setGeoWards([])
+      setGeoFetchError("Invalid LGA selection. Pick an LGA from the dropdown so the server id is used in /locations/wards/{id}.")
       return
     }
     let cancelled = false
@@ -290,11 +308,16 @@ export default function StaffPage() {
     return () => {
       cancelled = true
     }
-  }, [isElectionMode, selLgaId, token, authHeaders])
+  }, [isDialogOpen, selLgaId, token, authHeaders])
 
   useEffect(() => {
-    if (!isElectionMode || !selWardId || !token) {
+    if (!isDialogOpen || !selWardId || !token) {
       setGeoPus([])
+      return
+    }
+    if (!isCatalogueRowId(selWardId)) {
+      setGeoPus([])
+      setGeoFetchError("Invalid ward selection. Pick a ward from the dropdown so the server id is used in /locations/polling-units/{id}.")
       return
     }
     let cancelled = false
@@ -329,10 +352,16 @@ export default function StaffPage() {
     return () => {
       cancelled = true
     }
-  }, [isElectionMode, selWardId, token, authHeaders])
+  }, [isDialogOpen, selWardId, token, authHeaders])
 
   useEffect(() => {
-    if (!isDetailDrawerOpen || isElectionMode || !drawerSelStateId || !token) {
+    if (
+      !isDetailDrawerOpen ||
+      isElectionMode ||
+      !drawerSelStateId ||
+      !token ||
+      !isCatalogueRowId(drawerSelStateId)
+    ) {
       if (!drawerSelStateId) setDrawerGeoLgas([])
       return
     }
@@ -506,6 +535,11 @@ export default function StaffPage() {
           setSubmitting(false)
           return
         }
+        if (!isCatalogueRowId(selPuId)) {
+          setError("Invalid polling unit id. Re-select the ward and polling unit from the dropdowns.")
+          setSubmitting(false)
+          return
+        }
         payload = {
           name: form.name,
           email: form.email,
@@ -514,6 +548,11 @@ export default function StaffPage() {
       } else {
         if (!selStateId || !selLgaId) {
           setError("Please select state and LGA.")
+          setSubmitting(false)
+          return
+        }
+        if (!isCatalogueRowId(selStateId) || !isCatalogueRowId(selLgaId)) {
+          setError("Invalid territory ids. Re-select state and LGA from the API-driven dropdowns.")
           setSubmitting(false)
           return
         }
