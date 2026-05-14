@@ -1,5 +1,6 @@
 # Deploy to server: rsync → /home/verifield/admin/
-# Secrets: VERIFIELD_HOST, VERIFIELD_PORT (optional, default 22), VERIFIELD_USER,
+# Secrets (all required for SSH): VERIFIELD_HOST, VERIFIELD_PORT, VERIFIELD_USER,
+#          VERIFIELD_SSH_KEY, VERIFIELD_PASSPHRASE (empty string if key has no passphrase)
 # Rsync only — avoid recursive chmod on the deploy tree (avoids permission errors
 # on node_modules, .next, or system-owned paths).
 name: Deploy admin
@@ -28,29 +29,51 @@ jobs:
 
       - name: Deploy via rsync
         env:
+          VERIFIELD_HOST: ${{ secrets.VERIFIELD_HOST }}
+          VERIFIELD_USER: ${{ secrets.VERIFIELD_USER }}
+          VERIFIELD_PORT: ${{ secrets.VERIFIELD_PORT }}
           SSH_PRIVATE_KEY: ${{ secrets.VERIFIELD_SSH_KEY }}
           SSH_PASSPHRASE: ${{ secrets.VERIFIELD_PASSPHRASE }}
-          DEPLOY_HOST: ${{ secrets.VERIFIELD_HOST }}
-          DEPLOY_USER: ${{ secrets.VERIFIELD_USER }}
-          DEPLOY_PORT: ${{ secrets.VERIFIELD_PORT }}
         run: |
           set -eo pipefail
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
           python3 <<'PY'
-          import os, pathlib, sys
+          import os, pathlib, re, sys
+
+          def need(name, val):
+              if val is None or not str(val).strip():
+                  sys.exit(f"ERROR: {name} secret is missing or empty (check GitHub repo secrets).")
+
+          host = (os.environ.get("VERIFIELD_HOST") or "").strip()
+          user = (os.environ.get("VERIFIELD_USER") or "").strip()
+          port = re.sub(r"\s+", "", os.environ.get("VERIFIELD_PORT") or "")
+          need("VERIFIELD_HOST", host)
+          need("VERIFIELD_USER", user)
+          need("VERIFIELD_PORT", port)
+          if not port.isdigit() or not (1 <= int(port) <= 65535):
+              sys.exit(f"ERROR: VERIFIELD_PORT must be a number 1-65535; got {port!r}")
+
           key = os.environ.get("SSH_PRIVATE_KEY", "")
           if not key or not key.strip():
               sys.exit("ERROR: VERIFIELD_SSH_KEY secret is missing or empty.")
+
           p = pathlib.Path.home() / ".ssh" / "deploy_key"
           text = key if key.endswith("\n") else key + "\n"
           p.write_text(text)
           p.chmod(0o600)
+
+          env_file = pathlib.Path.home() / ".ssh" / "verifield_deploy_env"
+          env_file.write_text(f"DEPLOY_HOST={host}\nDEPLOY_USER={user}\nDEPLOY_PORT={port}\n")
           PY
 
-          PORT="${DEPLOY_PORT:-22}"
-          ssh-keyscan -p "${PORT}" -H "${DEPLOY_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          set -a
+          # shellcheck disable=SC1090
+          source "${HOME}/.ssh/verifield_deploy_env"
+          set +a
+
+          ssh-keyscan -p "${DEPLOY_PORT}" -H "${DEPLOY_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
           eval "$(ssh-agent -s)"
           if [ -n "${SSH_PASSPHRASE:-}" ]; then
@@ -65,7 +88,7 @@ jobs:
           ssh-add -l
 
           # accept-new: trust host on first connect if keyscan could not pre-populate (common on restricted networks)
-          SSH_BASE="-i ${HOME}/.ssh/deploy_key -p ${PORT} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${HOME}/.ssh/known_hosts"
+          SSH_BASE="-i ${HOME}/.ssh/deploy_key -p ${DEPLOY_PORT} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${HOME}/.ssh/known_hosts"
           REMOTE="${DEPLOY_USER}@${DEPLOY_HOST}"
           DEST="/home/verifield/admin/"
 
