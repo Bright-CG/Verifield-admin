@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dialog"
 import { Card } from "@/components/ui/card"
 import { Plus, CheckCircle2, Clock, Copy, X, Loader2 } from "lucide-react"
-import { STATE_NAMES, getLGAsForState } from "@/lib/nigeria-lgas"
 import { apiUrl } from "@/lib/api-base"
 
 interface Staff {
@@ -43,7 +42,7 @@ interface MeResponse {
 
 interface LocRow {
   id: string
-  slug: string
+  slug?: string | null
   name?: string | null
 }
 
@@ -52,35 +51,38 @@ interface NewCredentials {
   temp_password: string
 }
 
-const SelectField = ({
-  id, label, value, onChange, options, placeholder, disabled,
-}: {
-  id: string
-  label: string
-  value: string
-  onChange: (v: string) => void
-  options: string[]
-  placeholder?: string
-  disabled?: boolean
-}) => (
-  <div className="space-y-2">
-    <Label htmlFor={id}>{label}</Label>
-    <select
-      id={id}
-      value={value}
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
-      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      <option value="">{placeholder ?? "Select..."}</option>
-      {options.map((o) => (
-        <option key={o} value={o}>{o}</option>
-      ))}
-    </select>
-  </div>
-)
+const locLabel = (r: LocRow) => {
+  if (r.name && r.name.trim() !== "") return r.name
+  return (r.slug ?? "").replace(/-/g, " ").trim() || "—"
+}
 
-const locLabel = (r: LocRow) => (r.name && r.name.trim() !== "" ? r.name : r.slug.replace(/-/g, " "))
+/** Normalize Laravel `{ status, data: [...] }` into a list of location rows. */
+function normalizeLocationList(json: unknown): LocRow[] {
+  if (json === null || typeof json !== "object") return []
+  const raw = (json as { data?: unknown }).data
+  if (!Array.isArray(raw)) return []
+  return raw.filter(
+    (item): item is LocRow =>
+      item !== null &&
+      typeof item === "object" &&
+      "id" in item &&
+      (item as { id?: unknown }).id != null &&
+      String((item as { id: unknown }).id).length > 0
+  ) as LocRow[]
+}
+
+function rowId(r: LocRow): string {
+  return String(r.id)
+}
+
+function matchesSavedTerritory(row: LocRow, saved: string | null | undefined): boolean {
+  if (!saved?.trim()) return false
+  const want = saved.trim().toLowerCase()
+  const name = (row.name ?? "").trim().toLowerCase()
+  const slug = (row.slug ?? "").replace(/-/g, " ").toLowerCase()
+  const label = locLabel(row).trim().toLowerCase()
+  return name === want || (slug !== "" && slug === want) || label === want
+}
 
 export default function StaffPage() {
   const [staff, setStaff] = useState<Staff[]>([])
@@ -107,8 +109,6 @@ export default function StaffPage() {
   const [form, setForm] = useState({
     name: "",
     email: "",
-    assigned_state: "",
-    assigned_lga: "",
   })
 
   const [geoStates, setGeoStates] = useState<LocRow[]>([])
@@ -120,16 +120,25 @@ export default function StaffPage() {
   const [selWardId, setSelWardId] = useState("")
   const [selPuId, setSelPuId] = useState("")
   const [geoLoad, setGeoLoad] = useState({ states: false, lgas: false, wards: false, pus: false })
+  const [geoFetchError, setGeoFetchError] = useState("")
+
+  const [drawerSelStateId, setDrawerSelStateId] = useState("")
+  const [drawerSelLgaId, setDrawerSelLgaId] = useState("")
+  const [drawerGeoLgas, setDrawerGeoLgas] = useState<LocRow[]>([])
+  const [drawerLgasLoad, setDrawerLgasLoad] = useState(false)
 
   const token = typeof window !== "undefined" ? localStorage.getItem("vf_token") : ""
   const isElectionMode = tenantType === "election"
   const entityLabel = isElectionMode ? "Agent" : "Staff"
   const entityLabelLower = isElectionMode ? "agent" : "staff"
 
-  const authHeaders = {
-    Accept: "application/json",
-    Authorization: `Bearer ${token}`,
-  }
+  const authHeaders = useMemo(
+    () => ({
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    }),
+    [token]
+  )
 
   const fetchStaff = async () => {
     setLoading(true)
@@ -156,18 +165,33 @@ export default function StaffPage() {
     } catch { /* ignore */ }
   }
 
-  const loadStates = useCallback(async () => {
-    if (!token) return
+  const loadStates = useCallback(async (): Promise<LocRow[]> => {
+    if (!token) return []
+    setGeoFetchError("")
     setGeoLoad((g) => ({ ...g, states: true }))
     try {
       const res = await fetch(apiUrl("/api/v1/locations/states"), { headers: authHeaders })
-      if (!res.ok) return
-      const json = await res.json()
-      setGeoStates((json.data ?? []) as LocRow[])
+      const json: unknown = await res.json().catch(() => null)
+      const rows = normalizeLocationList(json)
+      if (!res.ok) {
+        const msg =
+          json && typeof json === "object" && "message" in json && typeof (json as { message: unknown }).message === "string"
+            ? (json as { message: string }).message
+            : `Could not load states (HTTP ${res.status}).`
+        setGeoFetchError(msg)
+        setGeoStates([])
+        return []
+      }
+      setGeoStates(rows)
+      return rows
+    } catch {
+      setGeoFetchError("Could not load states (network error).")
+      setGeoStates([])
+      return []
     } finally {
       setGeoLoad((g) => ({ ...g, states: false }))
     }
-  }, [token])
+  }, [token, authHeaders])
 
   useEffect(() => {
     fetchMe()
@@ -178,7 +202,8 @@ export default function StaffPage() {
   }, [search])
 
   useEffect(() => {
-    if (!isDialogOpen || !isElectionMode || !token) return
+    if (!isDialogOpen || !token) return
+    setGeoFetchError("")
     setSelStateId("")
     setSelLgaId("")
     setSelWardId("")
@@ -187,25 +212,46 @@ export default function StaffPage() {
     setGeoWards([])
     setGeoPus([])
     void loadStates()
-  }, [isDialogOpen, isElectionMode, token, loadStates])
+  }, [isDialogOpen, token, loadStates])
 
   useEffect(() => {
-    if (!isElectionMode || !selStateId || !token) {
+    if (!selStateId || !token) {
       setGeoLgas([])
       return
     }
     let cancelled = false
     setGeoLoad((g) => ({ ...g, lgas: true }))
-    fetch(apiUrl(`/api/v1/locations/lgas/${selStateId}`), { headers: authHeaders })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((json) => {
-        if (!cancelled && json?.data) setGeoLgas(json.data as LocRow[])
+    setGeoFetchError("")
+    fetch(apiUrl(`/api/v1/locations/lgas/${encodeURIComponent(selStateId)}`), { headers: authHeaders })
+      .then(async (r) => {
+        const json: unknown = await r.json().catch(() => null)
+        const rows = normalizeLocationList(json)
+        if (!cancelled) {
+          if (!r.ok) {
+            const msg =
+              json && typeof json === "object" && "message" in json && typeof (json as { message: unknown }).message === "string"
+                ? (json as { message: string }).message
+                : `Could not load LGAs (HTTP ${r.status}).`
+            setGeoFetchError(msg)
+            setGeoLgas([])
+          } else {
+            setGeoLgas(rows)
+          }
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setGeoFetchError("Could not load LGAs (network error).")
+          setGeoLgas([])
+        }
       })
       .finally(() => {
         if (!cancelled) setGeoLoad((g) => ({ ...g, lgas: false }))
       })
-    return () => { cancelled = true }
-  }, [isElectionMode, selStateId, token])
+    return () => {
+      cancelled = true
+    }
+  }, [selStateId, token, authHeaders])
 
   useEffect(() => {
     if (!isElectionMode || !selLgaId || !token) {
@@ -214,16 +260,37 @@ export default function StaffPage() {
     }
     let cancelled = false
     setGeoLoad((g) => ({ ...g, wards: true }))
-    fetch(apiUrl(`/api/v1/locations/wards/${selLgaId}`), { headers: authHeaders })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((json) => {
-        if (!cancelled && json?.data) setGeoWards(json.data as LocRow[])
+    setGeoFetchError("")
+    fetch(apiUrl(`/api/v1/locations/wards/${encodeURIComponent(selLgaId)}`), { headers: authHeaders })
+      .then(async (r) => {
+        const json: unknown = await r.json().catch(() => null)
+        const rows = normalizeLocationList(json)
+        if (!cancelled) {
+          if (!r.ok) {
+            const msg =
+              json && typeof json === "object" && "message" in json && typeof (json as { message: unknown }).message === "string"
+                ? (json as { message: string }).message
+                : `Could not load wards (HTTP ${r.status}).`
+            setGeoFetchError(msg)
+            setGeoWards([])
+          } else {
+            setGeoWards(rows)
+          }
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setGeoFetchError("Could not load wards (network error).")
+          setGeoWards([])
+        }
       })
       .finally(() => {
         if (!cancelled) setGeoLoad((g) => ({ ...g, wards: false }))
       })
-    return () => { cancelled = true }
-  }, [isElectionMode, selLgaId, token])
+    return () => {
+      cancelled = true
+    }
+  }, [isElectionMode, selLgaId, token, authHeaders])
 
   useEffect(() => {
     if (!isElectionMode || !selWardId || !token) {
@@ -232,16 +299,73 @@ export default function StaffPage() {
     }
     let cancelled = false
     setGeoLoad((g) => ({ ...g, pus: true }))
-    fetch(apiUrl(`/api/v1/locations/polling-units/${selWardId}`), { headers: authHeaders })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((json) => {
-        if (!cancelled && json?.data) setGeoPus(json.data as LocRow[])
+    setGeoFetchError("")
+    fetch(apiUrl(`/api/v1/locations/polling-units/${encodeURIComponent(selWardId)}`), { headers: authHeaders })
+      .then(async (r) => {
+        const json: unknown = await r.json().catch(() => null)
+        const rows = normalizeLocationList(json)
+        if (!cancelled) {
+          if (!r.ok) {
+            const msg =
+              json && typeof json === "object" && "message" in json && typeof (json as { message: unknown }).message === "string"
+                ? (json as { message: string }).message
+                : `Could not load polling units (HTTP ${r.status}).`
+            setGeoFetchError(msg)
+            setGeoPus([])
+          } else {
+            setGeoPus(rows)
+          }
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setGeoFetchError("Could not load polling units (network error).")
+          setGeoPus([])
+        }
       })
       .finally(() => {
         if (!cancelled) setGeoLoad((g) => ({ ...g, pus: false }))
       })
-    return () => { cancelled = true }
-  }, [isElectionMode, selWardId, token])
+    return () => {
+      cancelled = true
+    }
+  }, [isElectionMode, selWardId, token, authHeaders])
+
+  useEffect(() => {
+    if (!isDetailDrawerOpen || isElectionMode || !drawerSelStateId || !token) {
+      if (!drawerSelStateId) setDrawerGeoLgas([])
+      return
+    }
+    let cancelled = false
+    setDrawerLgasLoad(true)
+    fetch(apiUrl(`/api/v1/locations/lgas/${encodeURIComponent(drawerSelStateId)}`), { headers: authHeaders })
+      .then(async (r) => {
+        const json: unknown = await r.json().catch(() => null)
+        const rows = normalizeLocationList(json)
+        if (!cancelled) {
+          if (!r.ok) setDrawerGeoLgas([])
+          else setDrawerGeoLgas(rows)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setDrawerGeoLgas([])
+      })
+      .finally(() => {
+        if (!cancelled) setDrawerLgasLoad(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isDetailDrawerOpen, isElectionMode, drawerSelStateId, token, authHeaders])
+
+  useEffect(() => {
+    if (!isDetailDrawerOpen) {
+      setDrawerSelStateId("")
+      setDrawerSelLgaId("")
+      setDrawerGeoLgas([])
+      setDrawerLgasLoad(false)
+    }
+  }, [isDetailDrawerOpen])
 
   const handleGenerateDeviceCode = async (member: Staff) => {
     try {
@@ -271,6 +395,9 @@ export default function StaffPage() {
 
   const openStaffDrawer = async (member: Staff) => {
     setError("")
+    setDrawerSelStateId("")
+    setDrawerSelLgaId("")
+    setDrawerGeoLgas([])
     setSelectedStaff(member)
     setStaffForm({
       name: member.name ?? "",
@@ -281,7 +408,17 @@ export default function StaffPage() {
       assigned_unit_id: member.assigned_unit_id ?? "",
     })
     setIsDetailDrawerOpen(true)
+    let mode: "election" | "corporate" = tenantType
     try {
+      const meRes = await fetch(apiUrl("/api/v1/me"), { headers: authHeaders })
+      if (meRes.ok) {
+        const me = (await meRes.json()) as MeResponse
+        const t = me?.user?.tenant?.type
+        if (t === "election" || t === "corporate") {
+          mode = t
+          setTenantType(t)
+        }
+      }
       const res = await fetch(apiUrl(`/api/v1/staff/${member.id}`), { headers: authHeaders })
       if (!res.ok) return
       const json = await res.json()
@@ -295,6 +432,22 @@ export default function StaffPage() {
         assigned_ward: detail.assigned_ward ?? "",
         assigned_unit_id: detail.assigned_unit_id ?? "",
       })
+
+      if (mode === "corporate") {
+        const states = await loadStates()
+        const st = states.find((s) => matchesSavedTerritory(s, detail.assigned_state))
+        if (st) {
+          setDrawerSelStateId(rowId(st))
+          const lRes = await fetch(apiUrl(`/api/v1/locations/lgas/${encodeURIComponent(rowId(st))}`), {
+            headers: authHeaders,
+          })
+          const lJson: unknown = await lRes.json().catch(() => null)
+          const lgas = normalizeLocationList(lJson)
+          setDrawerGeoLgas(lRes.ok ? lgas : [])
+          const lg = lgas.find((l) => matchesSavedTerritory(l, detail.assigned_lga))
+          if (lg) setDrawerSelLgaId(rowId(lg))
+        }
+      }
     } catch { /* keep optimistic */ }
   }
 
@@ -305,7 +458,18 @@ export default function StaffPage() {
     try {
       const body = isElectionMode
         ? { name: staffForm.name, email: staffForm.email }
-        : staffForm
+        : (() => {
+            const st = geoStates.find((s) => rowId(s) === drawerSelStateId)
+            const lg = drawerGeoLgas.find((l) => rowId(l) === drawerSelLgaId)
+            return {
+              name: staffForm.name,
+              email: staffForm.email,
+              assigned_state: st ? locLabel(st) : staffForm.assigned_state,
+              assigned_lga: lg ? locLabel(lg) : staffForm.assigned_lga,
+              assigned_ward: staffForm.assigned_ward,
+              assigned_unit_id: staffForm.assigned_unit_id,
+            }
+          })()
       const res = await fetch(apiUrl(`/api/v1/staff/${selectedStaff.id}`), {
         method: "PUT",
         headers: {
@@ -335,22 +499,37 @@ export default function StaffPage() {
     setSubmitting(true)
     setError("")
     try {
-      const payload = isElectionMode
-        ? {
-            name: form.name,
-            email: form.email,
-            assigned_polling_unit_id: selPuId,
-          }
-        : {
-            name: form.name,
-            email: form.email,
-            assigned_state: form.assigned_state,
-            assigned_lga: form.assigned_lga,
-          }
-      if (isElectionMode && !selPuId) {
-        setError("Please select a polling unit.")
-        setSubmitting(false)
-        return
+      let payload: Record<string, string>
+      if (isElectionMode) {
+        if (!selPuId) {
+          setError("Please select a polling unit.")
+          setSubmitting(false)
+          return
+        }
+        payload = {
+          name: form.name,
+          email: form.email,
+          assigned_polling_unit_id: selPuId,
+        }
+      } else {
+        if (!selStateId || !selLgaId) {
+          setError("Please select state and LGA.")
+          setSubmitting(false)
+          return
+        }
+        const st = geoStates.find((s) => rowId(s) === selStateId)
+        const lg = geoLgas.find((l) => rowId(l) === selLgaId)
+        if (!st || !lg) {
+          setError("Territory data is still loading or invalid. Try again.")
+          setSubmitting(false)
+          return
+        }
+        payload = {
+          name: form.name,
+          email: form.email,
+          assigned_state: locLabel(st),
+          assigned_lga: locLabel(lg),
+        }
       }
       const res = await fetch(apiUrl("/api/v1/staff"), {
         method: "POST",
@@ -366,7 +545,7 @@ export default function StaffPage() {
         setCredentials({ email: data.data.email, temp_password: data.data.temp_password })
         fetchStaff()
         setIsDialogOpen(false)
-        setForm({ name: "", email: "", assigned_state: "", assigned_lga: "" })
+        setForm({ name: "", email: "" })
         setSelStateId("")
         setSelLgaId("")
         setSelWardId("")
@@ -381,7 +560,8 @@ export default function StaffPage() {
     }
   }
 
-  const lgas = form.assigned_state ? getLGAsForState(form.assigned_state) : []
+  const selectClass =
+    "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
 
   return (
     <div className="space-y-6">
@@ -530,7 +710,13 @@ export default function StaffPage() {
         </Table>
       </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          setIsDialogOpen(open)
+          if (!open) setGeoFetchError("")
+        }}
+      >
         <DialogContent className="sm:max-w-md bg-card border-border">
           <DialogHeader>
             <DialogTitle>Add New {entityLabel}</DialogTitle>
@@ -566,25 +752,56 @@ export default function StaffPage() {
             </div>
 
             {!isElectionMode && (
-              <>
-                <SelectField
-                  id="s-state"
-                  label="State"
-                  value={form.assigned_state}
-                  onChange={(v) => setForm({ ...form, assigned_state: v, assigned_lga: "" })}
-                  options={STATE_NAMES}
-                  placeholder="Select a State..."
-                />
-                <SelectField
-                  id="s-lga"
-                  label="Local Government Area (LGA)"
-                  value={form.assigned_lga}
-                  onChange={(v) => setForm({ ...form, assigned_lga: v })}
-                  options={lgas}
-                  placeholder={form.assigned_state ? "Select an LGA..." : "Select a State first"}
-                  disabled={!form.assigned_state}
-                />
-              </>
+              <div className="space-y-4 border border-border rounded-lg p-3">
+                <p className="text-xs text-muted-foreground">
+                  Select State → LGA (from national catalogue via API).
+                </p>
+
+                <div className="space-y-2">
+                  <Label>State</Label>
+                  <div className="relative">
+                    <select
+                      value={selStateId}
+                      disabled={geoLoad.states}
+                      onChange={(e) => {
+                        setSelStateId(e.target.value)
+                        setSelLgaId("")
+                        setSelWardId("")
+                        setSelPuId("")
+                      }}
+                      className={selectClass}
+                    >
+                      <option value="">{geoLoad.states ? "Loading…" : "Select state…"}</option>
+                      {geoStates.map((s) => (
+                        <option key={rowId(s)} value={rowId(s)}>{locLabel(s)}</option>
+                      ))}
+                    </select>
+                    {geoLoad.states && (
+                      <Loader2 className="absolute right-8 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Local Government Area (LGA)</Label>
+                  <div className="relative">
+                    <select
+                      value={selLgaId}
+                      disabled={!selStateId || geoLoad.lgas}
+                      onChange={(e) => setSelLgaId(e.target.value)}
+                      className={selectClass}
+                    >
+                      <option value="">{!selStateId ? "Select state first" : geoLoad.lgas ? "Loading…" : "Select LGA…"}</option>
+                      {geoLgas.map((x) => (
+                        <option key={rowId(x)} value={rowId(x)}>{locLabel(x)}</option>
+                      ))}
+                    </select>
+                    {geoLoad.lgas && (
+                      <Loader2 className="absolute right-8 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
 
             {isElectionMode && (
@@ -603,11 +820,11 @@ export default function StaffPage() {
                         setSelWardId("")
                         setSelPuId("")
                       }}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      className={selectClass}
                     >
                       <option value="">{geoLoad.states ? "Loading…" : "Select state…"}</option>
                       {geoStates.map((s) => (
-                        <option key={s.id} value={s.id}>{locLabel(s)}</option>
+                        <option key={rowId(s)} value={rowId(s)}>{locLabel(s)}</option>
                       ))}
                     </select>
                     {geoLoad.states && (
@@ -627,11 +844,11 @@ export default function StaffPage() {
                         setSelWardId("")
                         setSelPuId("")
                       }}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
+                      className={selectClass}
                     >
                       <option value="">{!selStateId ? "Select state first" : geoLoad.lgas ? "Loading…" : "Select LGA…"}</option>
                       {geoLgas.map((x) => (
-                        <option key={x.id} value={x.id}>{locLabel(x)}</option>
+                        <option key={rowId(x)} value={rowId(x)}>{locLabel(x)}</option>
                       ))}
                     </select>
                     {geoLoad.lgas && (
@@ -650,11 +867,11 @@ export default function StaffPage() {
                         setSelWardId(e.target.value)
                         setSelPuId("")
                       }}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
+                      className={selectClass}
                     >
                       <option value="">{!selLgaId ? "Select LGA first" : geoLoad.wards ? "Loading…" : "Select ward…"}</option>
                       {geoWards.map((x) => (
-                        <option key={x.id} value={x.id}>{locLabel(x)}</option>
+                        <option key={rowId(x)} value={rowId(x)}>{locLabel(x)}</option>
                       ))}
                     </select>
                     {geoLoad.wards && (
@@ -670,11 +887,11 @@ export default function StaffPage() {
                       value={selPuId}
                       disabled={!selWardId || geoLoad.pus}
                       onChange={(e) => setSelPuId(e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
+                      className={selectClass}
                     >
                       <option value="">{!selWardId ? "Select ward first" : geoLoad.pus ? "Loading…" : "Select polling unit…"}</option>
                       {geoPus.map((x) => (
-                        <option key={x.id} value={x.id}>{locLabel(x)}</option>
+                        <option key={rowId(x)} value={rowId(x)}>{locLabel(x)}</option>
                       ))}
                     </select>
                     {geoLoad.pus && (
@@ -683,6 +900,12 @@ export default function StaffPage() {
                   </div>
                 </div>
               </div>
+            )}
+
+            {geoFetchError && (
+              <p className="text-sm text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-2">
+                {geoFetchError}
+              </p>
             )}
 
             {error && (
@@ -748,25 +971,66 @@ export default function StaffPage() {
                 </p>
               </div>
             ) : (
-              <>
-                <SelectField
-                  id="d-state"
-                  label="State"
-                  value={staffForm.assigned_state}
-                  onChange={(v) => setStaffForm({ ...staffForm, assigned_state: v, assigned_lga: "" })}
-                  options={STATE_NAMES}
-                  placeholder="Select a State..."
-                />
-                <SelectField
-                  id="d-lga"
-                  label="Local Government Area (LGA)"
-                  value={staffForm.assigned_lga}
-                  onChange={(v) => setStaffForm({ ...staffForm, assigned_lga: v })}
-                  options={staffForm.assigned_state ? getLGAsForState(staffForm.assigned_state) : []}
-                  placeholder={staffForm.assigned_state ? "Select an LGA..." : "Select a State first"}
-                  disabled={!staffForm.assigned_state}
-                />
-              </>
+              <div className="space-y-4 border border-border rounded-lg p-3">
+                <p className="text-xs text-muted-foreground">
+                  Territory from API (State → LGA). Save to update assignment labels.
+                </p>
+                <div className="space-y-2">
+                  <Label>State</Label>
+                  <div className="relative">
+                    <select
+                      value={drawerSelStateId}
+                      disabled={geoLoad.states}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        setDrawerSelStateId(v)
+                        setDrawerSelLgaId("")
+                        const st = geoStates.find((s) => rowId(s) === v)
+                        setStaffForm((f) => ({
+                          ...f,
+                          assigned_state: st ? locLabel(st) : "",
+                          assigned_lga: "",
+                        }))
+                      }}
+                      className={selectClass}
+                    >
+                      <option value="">{geoLoad.states ? "Loading…" : "Select state…"}</option>
+                      {geoStates.map((s) => (
+                        <option key={rowId(s)} value={rowId(s)}>{locLabel(s)}</option>
+                      ))}
+                    </select>
+                    {geoLoad.states && (
+                      <Loader2 className="absolute right-8 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Local Government Area (LGA)</Label>
+                  <div className="relative">
+                    <select
+                      value={drawerSelLgaId}
+                      disabled={!drawerSelStateId || drawerLgasLoad}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        setDrawerSelLgaId(v)
+                        const lg = drawerGeoLgas.find((l) => rowId(l) === v)
+                        setStaffForm((f) => ({ ...f, assigned_lga: lg ? locLabel(lg) : "" }))
+                      }}
+                      className={selectClass}
+                    >
+                      <option value="">
+                        {!drawerSelStateId ? "Select state first" : drawerLgasLoad ? "Loading…" : "Select LGA…"}
+                      </option>
+                      {drawerGeoLgas.map((x) => (
+                        <option key={rowId(x)} value={rowId(x)}>{locLabel(x)}</option>
+                      ))}
+                    </select>
+                    {drawerLgasLoad && (
+                      <Loader2 className="absolute right-8 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
 
             <div className="rounded-md border border-border p-3 text-sm space-y-1">
