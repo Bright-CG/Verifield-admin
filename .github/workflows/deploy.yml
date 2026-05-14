@@ -73,7 +73,8 @@ jobs:
           source "${HOME}/.ssh/verifield_deploy_env"
           set +a
 
-          ssh-keyscan -p "${DEPLOY_PORT}" -H "${DEPLOY_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          echo "=== ssh-keyscan (verbose; host/port from secrets) ==="
+          ssh-keyscan -v -T 10 -p "${DEPLOY_PORT}" -H "${DEPLOY_HOST}" >> ~/.ssh/known_hosts
 
           eval "$(ssh-agent -s)"
           if [ -n "${SSH_PASSPHRASE:-}" ]; then
@@ -88,12 +89,14 @@ jobs:
           ssh-add -l
 
           # accept-new: trust host on first connect if keyscan could not pre-populate (common on restricted networks)
-          SSH_BASE="-i ${HOME}/.ssh/deploy_key -p ${DEPLOY_PORT} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${HOME}/.ssh/known_hosts"
+          SSH_BASE="-v -i ${HOME}/.ssh/deploy_key -p ${DEPLOY_PORT} -o ConnectTimeout=10 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${HOME}/.ssh/known_hosts"
           REMOTE="${DEPLOY_USER}@${DEPLOY_HOST}"
           DEST="/home/verifield/admin/"
 
+          echo "=== ssh mkdir (verbose, ConnectTimeout=10) ==="
           ssh ${SSH_BASE} "${REMOTE}" "mkdir -p ${DEST}"
 
+          echo "=== rsync (ssh -v via SSH_BASE) ==="
           rsync -avz --delete \
             -e "ssh ${SSH_BASE}" \
             --exclude='.git/' \
