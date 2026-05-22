@@ -18,9 +18,9 @@ interface ImportResult {
   credentials?: { email: string; temp_password: string }[]
 }
 
-const UNIT_TEMPLATE = `name,state,lga,ward,lat,long,external_ref
-PU 001 - Ward A,Lagos,Ikeja,Ward 01,6.5244,3.3792,PU-001
-PU 002 - Ward B,Lagos,Ikeja,Ward 02,6.5300,3.3850,PU-002`
+const UNIT_TEMPLATE = `name,state,lga,ward,lat,long,external_ref,accredited_voters
+PU 001 - Ward A,Lagos,Ikeja,Ward 01,6.5244,3.3792,PU-001,450
+PU 002 - Ward B,Lagos,Ikeja,Ward 02,6.5300,3.3850,PU-002,380`
 
 const STAFF_TEMPLATE = `name,email,state,lga,ward
 John Doe,john@example.com,Lagos,Ikeja,Ward 01
@@ -113,7 +113,8 @@ export default function ImportPage() {
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Bulk Import</h2>
         <p className="text-muted-foreground mt-1">
-          Upload a CSV to bulk-create Polling Units or Staff members.
+          Upload a CSV to bulk-create Polling Units or Staff members. For units, include{" "}
+          <code className="text-xs">accredited_voters</code> so the War Room discrepancy engine can flag overvotes.
         </p>
       </div>
 

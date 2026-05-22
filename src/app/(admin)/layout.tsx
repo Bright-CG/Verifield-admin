@@ -32,9 +32,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const currentTenantId = localStorage.getItem("vf_tenant_id") ?? ""
     setRole(currentRole)
     setTenantId(currentTenantId)
-    // #region agent log
-    fetch('http://127.0.0.1:7605/ingest/4755a3ff-bbc6-43a7-9293-b8b2aa6f5e15',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'093afd'},body:JSON.stringify({sessionId:'093afd',runId:'layout-debug-2',hypothesisId:'L1',location:'(admin)/layout.tsx:useEffect:init',message:'layout auth state loaded',data:{role:currentRole,hasTenantId:Boolean(currentTenantId)},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
 
     const token = localStorage.getItem("vf_token") ?? ""
     if (!token) return
@@ -58,15 +55,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (type === "election" || type === "corporate") {
           setTenantType(type)
         }
-        // #region agent log
-        fetch('http://127.0.0.1:7605/ingest/4755a3ff-bbc6-43a7-9293-b8b2aa6f5e15',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'093afd'},body:JSON.stringify({sessionId:'093afd',runId:'layout-debug-2',hypothesisId:'L2',location:'(admin)/layout.tsx:useEffect:me',message:'layout tenant type resolved',data:{tenantType:type??null},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
       })
-      .catch(() => {
-        // #region agent log
-        fetch('http://127.0.0.1:7605/ingest/4755a3ff-bbc6-43a7-9293-b8b2aa6f5e15',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'093afd'},body:JSON.stringify({sessionId:'093afd',runId:'layout-debug-2',hypothesisId:'L3',location:'(admin)/layout.tsx:useEffect:me:error',message:'layout /me failed',data:{},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-      })
+      .catch(() => {})
   }, [])
 
   const badgeLabel = role === "super_admin" ? "SUPER" : tenantId ? "ORG" : "ADMIN"

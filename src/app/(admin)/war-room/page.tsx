@@ -14,7 +14,7 @@ import {
   AlertTriangle, CheckCircle2, Map as MapIcon, RefreshCw,
   ShieldAlert, SignalHigh, WifiOff, MapPin, Search, Table2,
 } from "lucide-react"
-import { apiUrl, getReverbEchoConfig } from "@/lib/api-base"
+import { apiUrl, broadcastAuthUrl, getReverbEchoConfig } from "@/lib/api-base"
 import {
   DiscrepancyRow,
   DiscrepancyFlag,
@@ -203,9 +203,15 @@ export default function WarRoomPage() {
           wssPort: rv.wssPort,
           forceTLS: rv.forceTLS,
           enabledTransports: rv.enabledTransports,
+          authEndpoint: broadcastAuthUrl(),
+          auth: {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
         })
         instance
-          .channel(`verifications.${tid}`)
+          .private(`verifications.${tid}`)
           .listen(".verification.received", (e: Parameters<typeof handleVerification>[0]) => {
             handleVerification(e)
           })

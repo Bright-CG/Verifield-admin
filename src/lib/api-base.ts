@@ -15,6 +15,11 @@ export function apiUrl(path: string): string {
   return `${base}${p}`
 }
 
+/** Sanctum auth for Laravel Echo private channels. */
+export function broadcastAuthUrl(): string {
+  return apiUrl("/broadcasting/auth")
+}
+
 /** Laravel Reverb / Echo (map page). Override with NEXT_PUBLIC_REVERB_* in production. */
 export function getReverbEchoConfig(): {
   key: string
