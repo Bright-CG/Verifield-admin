@@ -11,7 +11,7 @@ import { apiUrl } from "@/lib/api-base"
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/war-room", label: "War Room", icon: Map },
-  { href: "/war-room?tab=discrepancy", label: "Discrepancy", icon: ShieldAlert, tenantScoped: true },
+  { href: "/war-room?tab=submissions", label: "Submissions", icon: ShieldAlert, tenantScoped: true },
   { href: "/tenants", label: "Tenants & Config", icon: Users, superOnly: true },
   { href: "/staff", label: "Staff Management", icon: UserCheck, tenantScoped: true, tenantLabel: true },
   { href: "/import", label: "Bulk Import", icon: Upload, tenantScoped: true },

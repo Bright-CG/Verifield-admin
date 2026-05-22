@@ -72,7 +72,7 @@ export default function DashboardPage() {
         { title: "Units on Map", value: stats.total_units, icon: Map, note: "With coordinates" },
         { title: "Verified", value: stats.verified, icon: ShieldCheck, note: "Latest status per unit" },
         { title: "Verifications Today", value: stats.verifications_today, icon: Activity, note: "Server timestamp" },
-        { title: "Overvote Flags", value: stats.overvote_flags, icon: AlertTriangle, note: "Discrepancy engine" },
+        { title: "Submissions", value: stats.submissions ?? stats.verified, icon: ShieldCheck, note: "Units with captured results" },
       ]
 
   return (

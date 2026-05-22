@@ -1,7 +1,7 @@
 import { apiUrl } from "@/lib/api-base"
 
 export type UnitMapStatus = "Pending" | "Verified"
-export type DiscrepancyFlag = "ok" | "overvote" | "no_accredited" | "off_site"
+export type SubmissionFlag = "ok" | "off_site"
 
 export interface WarRoomMapUnit {
   id: string
@@ -13,24 +13,24 @@ export interface WarRoomMapUnit {
   ward: string | null
   status: UnitMapStatus
   is_off_site: boolean
-  flag: DiscrepancyFlag
+  flag: SubmissionFlag
   latest_verification_id: string | null
   image_url: string | null
   agent_name: string | null
   verified_at: string | null
 }
 
-export interface DiscrepancyRow {
+export interface SubmissionRow {
   unit_id: string
   unit_name: string
   state: string | null
   lga: string | null
   ward: string | null
-  total_votes: number
-  accredited_voters: number | null
-  overvote: number
-  flag: DiscrepancyFlag
+  agent_name: string | null
+  verified_at: string | null
+  flag: SubmissionFlag
   latest_verification_id: string | null
+  image_url: string | null
 }
 
 export interface WarRoomSummary {
@@ -38,13 +38,15 @@ export interface WarRoomSummary {
   verified: number
   pending: number
   off_site: number
+  submissions: number
   overvote_flags: number
   clean_units: number
 }
 
 export interface WarRoomPayload {
   map_units: WarRoomMapUnit[]
-  discrepancies: DiscrepancyRow[]
+  submissions: SubmissionRow[]
+  discrepancies: SubmissionRow[]
   summary: WarRoomSummary
 }
 
@@ -61,5 +63,9 @@ export async function fetchWarRoom(
   })
   if (!res.ok) return null
   const json = await res.json()
-  return json.data ?? null
+  const data = json.data as WarRoomPayload
+  if (!data.submissions && data.discrepancies) {
+    data.submissions = data.discrepancies
+  }
+  return data
 }

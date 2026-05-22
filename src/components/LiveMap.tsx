@@ -16,7 +16,6 @@ L.Marker.prototype.options.icon = DefaultIcon
 
 function markerColor(unit: WarRoomMapUnit): string {
   if (unit.flag === "off_site" || unit.is_off_site) return "#ef4444"
-  if (unit.flag === "overvote") return "#f97316"
   if (unit.status === "Verified") return "#22c55e"
   return "#eab308"
 }

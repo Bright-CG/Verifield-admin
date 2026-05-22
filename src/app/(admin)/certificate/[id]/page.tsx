@@ -27,6 +27,7 @@ interface CertificateData {
   hash_valid: boolean
   certificate_id: string
   issued_at: string
+  legal_statement?: string
 }
 
 export default function CertificatePage() {
@@ -119,6 +120,12 @@ export default function CertificatePage() {
             </div>
           </div>
         </div>
+
+        {data.legal_statement && (
+          <div className="px-8 py-4 border-b border-border bg-muted/30 text-sm text-muted-foreground leading-relaxed">
+            {data.legal_statement}
+          </div>
+        )}
 
         <div className="p-8 space-y-6">
           {/* Two Column Grid */}

@@ -16,8 +16,8 @@ import {
 } from "lucide-react"
 import { apiUrl, broadcastAuthUrl, getReverbEchoConfig } from "@/lib/api-base"
 import {
-  DiscrepancyRow,
-  DiscrepancyFlag,
+  SubmissionRow,
+  SubmissionFlag,
   WarRoomMapUnit,
   WarRoomPayload,
   fetchWarRoom,
@@ -47,18 +47,19 @@ interface TenantOption {
   name: string
 }
 
-const FLAG_CONFIG: Record<DiscrepancyFlag, { color: string; label: string; icon: typeof CheckCircle2 }> = {
-  overvote:      { color: "text-destructive bg-destructive/10 border-destructive/20", label: "OVERVOTE", icon: ShieldAlert },
-  ok:            { color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20", label: "OK", icon: CheckCircle2 },
-  no_accredited: { color: "text-amber-500 bg-amber-500/10 border-amber-500/20", label: "NO TALLY", icon: AlertTriangle },
-  off_site:      { color: "text-destructive bg-destructive/10 border-destructive/20", label: "OFF-SITE", icon: MapPin },
+const FLAG_CONFIG: Record<SubmissionFlag, { color: string; label: string; icon: typeof CheckCircle2 }> = {
+  ok:       { color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20", label: "ON-SITE", icon: CheckCircle2 },
+  off_site: { color: "text-destructive bg-destructive/10 border-destructive/20", label: "OFF-SITE", icon: MapPin },
 }
 
 export default function WarRoomPage() {
   const searchParams = useSearchParams()
-  const initialTab = searchParams.get("tab") === "discrepancy" ? "discrepancy" : "map"
+  const initialTab =
+    searchParams.get("tab") === "submissions" || searchParams.get("tab") === "discrepancy"
+      ? "submissions"
+      : "map"
 
-  const [tab, setTab] = useState<"map" | "discrepancy">(initialTab)
+  const [tab, setTab] = useState<"map" | "submissions">(initialTab)
   const [payload, setPayload] = useState<WarRoomPayload | null>(null)
   const [loading, setLoading] = useState(true)
   const [feed, setFeed] = useState<LiveEvent[]>([])
@@ -230,7 +231,7 @@ export default function WarRoomPage() {
 
   const summary = payload?.summary
   const mapUnits = payload?.map_units ?? []
-  const rows = payload?.discrepancies ?? []
+  const rows = payload?.submissions ?? payload?.discrepancies ?? []
   const filteredRows = rows.filter(
     (r) =>
       r.unit_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -250,7 +251,7 @@ export default function WarRoomPage() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">War Room</h2>
           <p className="text-muted-foreground mt-1">
-            Live map and discrepancy audit — one data source, real-time Reverb updates.
+            Live map and field submissions — photo evidence with real-time Reverb updates.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -292,8 +293,8 @@ export default function WarRoomPage() {
             { label: "Verified", value: summary.verified, color: "text-emerald-500" },
             { label: "Pending", value: summary.pending, color: "text-amber-500" },
             { label: "Off-site", value: summary.off_site, color: "text-destructive" },
-            { label: "Overvotes", value: summary.overvote_flags, color: "text-destructive" },
-            { label: "Clean", value: summary.clean_units, color: "text-emerald-500" },
+            { label: "Submissions", value: summary.submissions ?? rows.length, color: "text-primary" },
+            { label: "On-site", value: summary.clean_units, color: "text-emerald-500" },
           ].map((s) => (
             <Card key={s.label} className="border-border p-3">
               <div className="text-xs text-muted-foreground">{s.label}</div>
@@ -313,15 +314,15 @@ export default function WarRoomPage() {
           <MapIcon className="h-4 w-4" /> Live Map
         </Button>
         <Button
-          variant={tab === "discrepancy" ? "default" : "ghost"}
+          variant={tab === "submissions" ? "default" : "ghost"}
           size="sm"
           className="gap-2"
-          onClick={() => setTab("discrepancy")}
+          onClick={() => setTab("submissions")}
         >
-          <Table2 className="h-4 w-4" /> Discrepancy
-          {summary && summary.overvote_flags > 0 && (
-            <span className="ml-1 rounded-full bg-destructive px-1.5 text-[10px] text-destructive-foreground">
-              {summary.overvote_flags}
+          <Table2 className="h-4 w-4" /> Submissions
+          {summary && summary.submissions > 0 && (
+            <span className="ml-1 rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">
+              {summary.submissions}
             </span>
           )}
         </Button>
@@ -401,9 +402,8 @@ export default function WarRoomPage() {
                 <TableRow className="border-border hover:bg-transparent">
                   <TableHead>Unit</TableHead>
                   <TableHead>Location</TableHead>
-                  <TableHead className="text-right">Votes</TableHead>
-                  <TableHead className="text-right">Accredited</TableHead>
-                  <TableHead className="text-right">Over</TableHead>
+                  <TableHead>Agent</TableHead>
+                  <TableHead>Captured</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Action</TableHead>
                 </TableRow>
@@ -412,7 +412,7 @@ export default function WarRoomPage() {
                 {loading ? (
                   [...Array(4)].map((_, i) => (
                     <TableRow key={i} className="border-border">
-                      {[...Array(7)].map((_, j) => (
+                      {[...Array(6)].map((_, j) => (
                         <TableCell key={j}>
                           <div className="h-4 bg-muted rounded animate-pulse" />
                         </TableCell>
@@ -421,19 +421,17 @@ export default function WarRoomPage() {
                   ))
                 ) : filteredRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                       No submitted results yet.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredRows.map((row) => {
+                  filteredRows.map((row: SubmissionRow) => {
                     const cfg = FLAG_CONFIG[row.flag]
                     return (
                       <TableRow
                         key={row.unit_id}
-                        className={`border-border cursor-pointer ${
-                          row.flag === "overvote" ? "bg-destructive/[0.03]" : ""
-                        }`}
+                        className="border-border cursor-pointer"
                         onClick={() => {
                           setSelectedUnitId(row.unit_id)
                           setTab("map")
@@ -443,14 +441,11 @@ export default function WarRoomPage() {
                         <TableCell className="text-sm text-muted-foreground">
                           {[row.state, row.lga, row.ward].filter(Boolean).join(" › ")}
                         </TableCell>
-                        <TableCell className="text-right font-mono">{row.total_votes}</TableCell>
-                        <TableCell className="text-right font-mono">
-                          {row.accredited_voters ?? "—"}
-                        </TableCell>
-                        <TableCell className={`text-right font-mono font-bold ${
-                          row.overvote > 0 ? "text-destructive" : "text-muted-foreground"
-                        }`}>
-                          {row.overvote > 0 ? `+${row.overvote}` : "—"}
+                        <TableCell className="text-sm">{row.agent_name ?? "—"}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {row.verified_at
+                            ? new Date(row.verified_at).toLocaleString()
+                            : "—"}
                         </TableCell>
                         <TableCell>
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold border ${cfg.color}`}>
