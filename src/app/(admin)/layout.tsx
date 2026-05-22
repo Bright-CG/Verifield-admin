@@ -3,14 +3,15 @@
 import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Map, Users, FileText, LogOut, UserCheck, Upload, Settings } from "lucide-react"
+import { LayoutDashboard, Map, Users, FileText, LogOut, UserCheck, Upload, Settings, ShieldAlert } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { cn } from "@/lib/utils"
 import { apiUrl } from "@/lib/api-base"
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/map", label: "Live Map", icon: Map },
+  { href: "/war-room", label: "War Room", icon: Map },
+  { href: "/war-room?tab=discrepancy", label: "Discrepancy", icon: ShieldAlert, tenantScoped: true },
   { href: "/tenants", label: "Tenants & Config", icon: Users, superOnly: true },
   { href: "/staff", label: "Staff Management", icon: UserCheck, tenantScoped: true, tenantLabel: true },
   { href: "/import", label: "Bulk Import", icon: Upload, tenantScoped: true },
@@ -98,7 +99,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         <nav className="flex-1 px-4 py-4 space-y-1">
           {resolvedNavItems.map((item) => {
-            const active = pathname === item.href || pathname.startsWith(item.href + "/")
+            const active =
+              item.href.startsWith("/war-room")
+                ? pathname === "/war-room" || pathname.startsWith("/war-room/")
+                : pathname === item.href || pathname.startsWith(item.href + "/")
 
             if (item.superOnly && role !== "super_admin") return null
             if (item.tenantScoped && role === "super_admin") return null
@@ -154,7 +158,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="h-16 flex items-center px-8 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
           <h1 className="text-lg font-semibold">
-            {navItems.find(n => pathname.startsWith(n.href))?.label ?? "VeriField Admin"}
+            {navItems.find((n) =>
+              n.href.startsWith("/war-room")
+                ? pathname.startsWith("/war-room")
+                : pathname.startsWith(n.href.split("?")[0])
+            )?.label ?? "VeriField Admin"}
           </h1>
         </header>
 
