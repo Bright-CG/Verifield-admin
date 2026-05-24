@@ -73,8 +73,15 @@ jobs:
           source "${HOME}/.ssh/verifield_deploy_env"
           set +a
 
-          echo "=== ssh-keyscan (verbose; host/port from secrets) ==="
-          ssh-keyscan -v -T 10 -p "${DEPLOY_PORT}" -H "${DEPLOY_HOST}" >> ~/.ssh/known_hosts
+          touch ~/.ssh/known_hosts
+          echo "=== ssh-keyscan (optional — GitHub runners are often blocked on custom SSH ports) ==="
+          if ssh-keyscan -T 20 -p "${DEPLOY_PORT}" -H "${DEPLOY_HOST}" >> ~/.ssh/known_hosts 2>/tmp/keyscan.err; then
+            echo "Host key stored in known_hosts."
+          else
+            echo "WARN: ssh-keyscan could not reach ${DEPLOY_HOST}:${DEPLOY_PORT} from this runner."
+            echo "Continuing — SSH uses StrictHostKeyChecking=accept-new on first connect."
+            cat /tmp/keyscan.err 2>/dev/null || true
+          fi
 
           eval "$(ssh-agent -s)"
           if [ -n "${SSH_PASSPHRASE:-}" ]; then
@@ -106,3 +113,5 @@ jobs:
             --exclude='.env' \
             --exclude='.env.*' \
             ./ "${REMOTE}:${DEST}"
+
+          echo "=== deploy complete (run npm ci && npm run build on server if .next is not rsynced) ==="
