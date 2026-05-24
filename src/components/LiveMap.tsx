@@ -15,7 +15,6 @@ const DefaultIcon = L.icon({
 L.Marker.prototype.options.icon = DefaultIcon
 
 function markerColor(unit: WarRoomMapUnit): string {
-  if (unit.flag === "off_site" || unit.is_off_site) return "#ef4444"
   if (unit.status === "Verified") return "#22c55e"
   return "#eab308"
 }
@@ -66,7 +65,6 @@ export default function LiveMap({ units, selectedUnitId, onSelectUnit }: MapProp
                 <p className="font-bold text-indigo-400">{unit.name}</p>
                 <p className="text-xs text-zinc-400">
                   Status: {unit.status}
-                  {unit.is_off_site ? " · Off-site" : ""}
                 </p>
                 {unit.agent_name && (
                   <p className="text-xs text-zinc-500">Agent: {unit.agent_name}</p>

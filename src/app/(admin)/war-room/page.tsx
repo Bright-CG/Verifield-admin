@@ -39,7 +39,6 @@ interface LiveEvent {
   lat: number
   lng: number
   timestamp: Date
-  isOffSite?: boolean
 }
 
 interface TenantOption {
@@ -48,8 +47,7 @@ interface TenantOption {
 }
 
 const FLAG_CONFIG: Record<SubmissionFlag, { color: string; label: string; icon: typeof CheckCircle2 }> = {
-  ok:       { color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20", label: "ON-SITE", icon: CheckCircle2 },
-  off_site: { color: "text-destructive bg-destructive/10 border-destructive/20", label: "OFF-SITE", icon: MapPin },
+  ok: { color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20", label: "CAPTURED", icon: CheckCircle2 },
 }
 
 export default function WarRoomPage() {
@@ -116,7 +114,6 @@ export default function WarRoomPage() {
     unit_name: string | null
     gps_lat: number
     gps_long: number
-    is_off_site: boolean
     agent?: { name?: string | null }
   }) => {
     const newEvent: LiveEvent = {
@@ -126,7 +123,6 @@ export default function WarRoomPage() {
       lat: Number(event.gps_lat),
       lng: Number(event.gps_long),
       timestamp: new Date(),
-      isOffSite: Boolean(event.is_off_site),
     }
     setFeed((prev) => [newEvent, ...prev].slice(0, 20))
 
@@ -137,8 +133,9 @@ export default function WarRoomPage() {
           ? {
               ...u,
               status: "Verified" as const,
-              is_off_site: Boolean(event.is_off_site),
-              flag: event.is_off_site ? ("off_site" as const) : u.flag,
+              lat: Number(event.gps_lat),
+              lng: Number(event.gps_long),
+              flag: "ok" as const,
               latest_verification_id: event.id,
             }
           : u
@@ -157,8 +154,7 @@ export default function WarRoomPage() {
               lga: null,
               ward: null,
               status: "Verified" as const,
-              is_off_site: Boolean(event.is_off_site),
-              flag: event.is_off_site ? "off_site" : "ok",
+              flag: "ok",
               latest_verification_id: event.id,
               image_url: null,
               agent_name: event.agent?.name ?? null,
@@ -166,18 +162,13 @@ export default function WarRoomPage() {
             } satisfies WarRoomMapUnit,
           ]
 
-      const verified = units.filter((u) => u.status === "Verified").length
-      const pending = units.filter((u) => u.status === "Pending").length
-      const offSite = units.filter((u) => u.is_off_site).length
-
       return {
         ...prev,
         map_units: units,
         summary: {
           ...prev.summary,
-          verified,
-          pending,
-          off_site: offSite,
+          verified: units.filter((u) => u.status === "Verified").length,
+          pending: units.filter((u) => u.status === "Pending").length,
         },
       }
     })
@@ -292,9 +283,7 @@ export default function WarRoomPage() {
             { label: "Units on map", value: summary.total_units },
             { label: "Verified", value: summary.verified, color: "text-emerald-500" },
             { label: "Pending", value: summary.pending, color: "text-amber-500" },
-            { label: "Off-site", value: summary.off_site, color: "text-destructive" },
             { label: "Submissions", value: summary.submissions ?? rows.length, color: "text-primary" },
-            { label: "On-site", value: summary.clean_units, color: "text-emerald-500" },
           ].map((s) => (
             <Card key={s.label} className="border-border p-3">
               <div className="text-xs text-muted-foreground">{s.label}</div>
@@ -356,17 +345,11 @@ export default function WarRoomPage() {
                 {feed.map((event) => (
                   <div
                     key={event.id}
-                    className={`p-3 rounded-lg border text-sm ${
-                      event.isOffSite
-                        ? "bg-destructive/5 border-destructive/20"
-                        : "bg-emerald-500/5 border-emerald-500/20"
-                    }`}
+                    className="p-3 rounded-lg border text-sm bg-emerald-500/5 border-emerald-500/20"
                   >
                     <div className="flex justify-between gap-2 mb-1">
-                      <span className={`text-xs font-semibold truncate ${
-                        event.isOffSite ? "text-destructive" : "text-emerald-500"
-                      }`}>
-                        {event.isOffSite ? "Off-site" : "Verified"}
+                      <span className="text-xs font-semibold truncate text-emerald-500">
+                        Verified
                       </span>
                       <span className="text-xs text-muted-foreground shrink-0">
                         {timeAgo(event.timestamp)}
@@ -404,6 +387,7 @@ export default function WarRoomPage() {
                   <TableHead>Location</TableHead>
                   <TableHead>Agent</TableHead>
                   <TableHead>Captured</TableHead>
+                  <TableHead>EC8A</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Action</TableHead>
                 </TableRow>
@@ -412,7 +396,7 @@ export default function WarRoomPage() {
                 {loading ? (
                   [...Array(4)].map((_, i) => (
                     <TableRow key={i} className="border-border">
-                      {[...Array(6)].map((_, j) => (
+                      {[...Array(7)].map((_, j) => (
                         <TableCell key={j}>
                           <div className="h-4 bg-muted rounded animate-pulse" />
                         </TableCell>
@@ -421,7 +405,7 @@ export default function WarRoomPage() {
                   ))
                 ) : filteredRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                       No submitted results yet.
                     </TableCell>
                   </TableRow>
@@ -446,6 +430,9 @@ export default function WarRoomPage() {
                           {row.verified_at
                             ? new Date(row.verified_at).toLocaleString()
                             : "—"}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground capitalize">
+                          {row.ec8a_status ?? "—"}
                         </TableCell>
                         <TableCell>
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold border ${cfg.color}`}>

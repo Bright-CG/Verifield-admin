@@ -1,7 +1,7 @@
 import { apiUrl } from "@/lib/api-base"
 
 export type UnitMapStatus = "Pending" | "Verified"
-export type SubmissionFlag = "ok" | "off_site"
+export type SubmissionFlag = "ok"
 
 export interface WarRoomMapUnit {
   id: string
@@ -12,7 +12,6 @@ export interface WarRoomMapUnit {
   lga: string | null
   ward: string | null
   status: UnitMapStatus
-  is_off_site: boolean
   flag: SubmissionFlag
   latest_verification_id: string | null
   image_url: string | null
@@ -31,6 +30,9 @@ export interface SubmissionRow {
   flag: SubmissionFlag
   latest_verification_id: string | null
   image_url: string | null
+  ec8a_status: string | null
+  capture_lat?: number | null
+  capture_long?: number | null
 }
 
 export interface WarRoomSummary {

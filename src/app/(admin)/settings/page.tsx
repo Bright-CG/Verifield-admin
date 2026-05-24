@@ -26,6 +26,9 @@ interface SystemConfig {
     play_integrity_key: string
     devicecheck_key: string
     reverb_app_key: string
+    vision_api_key: string
+    vision_api_url: string
+    vision_api_model: string
     billing_secret: string
     mail_provider: string
     mail_from_address: string
@@ -53,6 +56,9 @@ export default function SettingsPage() {
       play_integrity_key: "",
       devicecheck_key: "",
       reverb_app_key: "",
+      vision_api_key: "",
+      vision_api_url: "https://api.openai.com/v1/chat/completions",
+      vision_api_model: "gpt-4o-mini",
       billing_secret: "",
       mail_provider: "",
       mail_from_address: "",
@@ -326,6 +332,33 @@ export default function SettingsPage() {
                   onChange={e => setConfig({
                     ...config,
                     integrations: { ...config.integrations, reverb_app_key: e.target.value },
+                  })}
+                />
+              </div>
+              <div className="grid gap-2 md:col-span-2">
+                <Label htmlFor="vision_api_key">EC8A Vision API Key (OpenAI-compatible)</Label>
+                <Input
+                  id="vision_api_key"
+                  type="password"
+                  placeholder="sk-..."
+                  value={config.integrations.vision_api_key}
+                  onChange={e => setConfig({
+                    ...config,
+                    integrations: { ...config.integrations, vision_api_key: e.target.value },
+                  })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Used to read handwritten EC8A result sheets from captured photos. Stored in System Settings only.
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="vision_api_model">Vision model</Label>
+                <Input
+                  id="vision_api_model"
+                  value={config.integrations.vision_api_model}
+                  onChange={e => setConfig({
+                    ...config,
+                    integrations: { ...config.integrations, vision_api_model: e.target.value },
                   })}
                 />
               </div>

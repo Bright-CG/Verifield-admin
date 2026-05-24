@@ -28,6 +28,11 @@ interface CertificateData {
   certificate_id: string
   issued_at: string
   legal_statement?: string
+  ec8a_extraction?: {
+    status: string
+    data: Record<string, unknown> | null
+    extracted_at: string | null
+  } | null
 }
 
 export default function CertificatePage() {
@@ -36,6 +41,8 @@ export default function CertificatePage() {
   const [data, setData] = useState<CertificateData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [extracting, setExtracting] = useState(false)
+  const [extractMsg, setExtractMsg] = useState("")
   const printRef = useRef<HTMLDivElement>(null)
 
   const token = typeof window !== "undefined" ? localStorage.getItem("vf_token") : ""
@@ -49,6 +56,31 @@ export default function CertificatePage() {
       .then(json => { setData(json.data); setLoading(false) })
       .catch(() => { setError("Failed to load certificate."); setLoading(false) })
   }, [id, token])
+
+  const handleExtractEc8a = async () => {
+    if (!id) return
+    setExtracting(true)
+    setExtractMsg("")
+    try {
+      const res = await fetch(apiUrl(`/api/v1/admin/verifications/${id}/extract-ec8a`), {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      })
+      const json = await res.json()
+      setExtractMsg(json.message ?? (res.ok ? "Extraction complete." : "Extraction failed."))
+      if (res.ok) {
+        const cert = await fetch(apiUrl(`/api/v1/verifications/${id}/certificate`), {
+          headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+        })
+        const certJson = await cert.json()
+        setData(certJson.data)
+      }
+    } catch {
+      setExtractMsg("Could not run EC8A extraction.")
+    } finally {
+      setExtracting(false)
+    }
+  }
 
   const handlePrint = () => window.print()
 
@@ -68,6 +100,14 @@ export default function CertificatePage() {
     <div className="min-h-screen bg-muted/30 p-6">
       {/* Action Buttons — hidden during print */}
       <div className="print:hidden flex justify-end gap-3 mb-6 max-w-3xl mx-auto">
+        <Button
+          variant="outline"
+          className="border-border gap-2"
+          onClick={() => void handleExtractEc8a()}
+          disabled={extracting}
+        >
+          {extracting ? "Reading sheet…" : "Extract EC8A (OCR)"}
+        </Button>
         <Button variant="outline" className="border-border gap-2" onClick={handlePrint}>
           <Printer className="w-4 h-4" /> Print Certificate
         </Button>
@@ -75,6 +115,9 @@ export default function CertificatePage() {
           <Download className="w-4 h-4" /> Save as PDF
         </Button>
       </div>
+      {extractMsg && (
+        <p className="print:hidden text-sm text-muted-foreground max-w-3xl mx-auto mb-4">{extractMsg}</p>
+      )}
 
       {/* Certificate Document */}
       <div
@@ -168,22 +211,14 @@ export default function CertificatePage() {
             {/* GPS */}
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                <MapPin className="w-3 h-3" /> GPS Coordinates
+                <MapPin className="w-3 h-3" /> Capture location (watermarked on photo)
               </div>
               <div className="font-mono text-sm text-foreground">
                 {v.gps_lat.toFixed(6)}, {v.gps_long.toFixed(6)}
               </div>
               <div className="text-xs text-muted-foreground">
-                Accuracy: ±{v.accuracy}m
-                {v.metadata?.is_off_site && (
-                  <span className="ml-2 text-destructive font-semibold">⚠ Off-site</span>
-                )}
+                Device accuracy ±{v.accuracy}m at shutter time
               </div>
-              {v.metadata?.distance_from_unit && (
-                <div className="text-xs text-muted-foreground">
-                  {v.metadata.distance_from_unit.toFixed(1)}m from unit
-                </div>
-              )}
             </div>
           </div>
 
@@ -233,7 +268,25 @@ export default function CertificatePage() {
             </>
           )}
 
-          {/* Footer */}
+          {data.ec8a_extraction?.data && (
+            <>
+              <div className="border-t border-border" />
+              <div>
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  EC8A result sheet (extracted)
+                </div>
+                <pre className="text-xs bg-muted p-4 rounded-lg overflow-auto max-h-64">
+                  {JSON.stringify(data.ec8a_extraction.data, null, 2)}
+                </pre>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Status: {data.ec8a_extraction.status}
+                  {data.ec8a_extraction.extracted_at
+                    ? ` · ${new Date(data.ec8a_extraction.extracted_at).toLocaleString()}`
+                    : ""}
+                </p>
+              </div>
+            </>
+          )}
           <div className="border-t border-border pt-4 text-center text-xs text-muted-foreground">
             <p>This certificate is system-generated and cryptographically linked to an immutable audit trail.</p>
             <p className="mt-1">Record ID: <span className="font-mono">{v.id}</span></p>
