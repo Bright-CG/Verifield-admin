@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { ShieldCheck } from "lucide-react"
 import { apiUrl } from "@/lib/api-base"
 
 export default function LoginPage() {
@@ -111,8 +110,15 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <header className="h-16 flex items-center justify-between px-8 border-b border-border">
-        <Link href="/" className="text-xl font-bold tracking-tighter">
-          Veri<span className="text-primary">Field</span>
+        <Link href="/" className="flex items-center gap-2">
+          <img
+            src="/verifield-logo.png"
+            alt="VeriField"
+            className="h-9 w-9 rounded-lg object-cover"
+          />
+          <span className="text-xl font-bold tracking-tighter">
+            Veri<span className="text-primary">Field</span>
+          </span>
         </Link>
         <ThemeToggle />
       </header>
@@ -121,9 +127,11 @@ export default function LoginPage() {
         <Card className="w-full max-w-md border-border bg-card shadow-xl">
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-4">
-              <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
-                <ShieldCheck className="h-7 w-7 text-primary" />
-              </div>
+              <img
+                src="/verifield-logo.png"
+                alt="VeriField"
+                className="h-16 w-16 rounded-xl object-cover shadow-md"
+              />
             </div>
             <CardTitle className="text-2xl font-bold">
               {mfaUserId ? "Verify your identity" : "Welcome Back"}

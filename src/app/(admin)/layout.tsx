@@ -78,7 +78,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="flex h-screen w-full bg-background text-foreground">
 
       <aside className="w-64 flex flex-col border-r border-border bg-card">
-        <div className="h-16 flex items-center px-6 border-b border-border">
+        <div className="h-16 flex items-center gap-2 px-6 border-b border-border">
+          <img
+            src="/verifield-logo.png"
+            alt="VeriField"
+            className="h-8 w-8 rounded-md object-cover shrink-0"
+          />
           <span className="text-xl font-bold tracking-tighter">
             Veri<span className="text-primary">Field</span>
           </span>
