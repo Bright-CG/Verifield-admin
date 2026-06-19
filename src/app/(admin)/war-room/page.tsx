@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import {
   AlertTriangle, CheckCircle2, Map as MapIcon, RefreshCw,
-  ShieldAlert, SignalHigh, WifiOff, MapPin, Search, Table2,
+  SignalHigh, WifiOff, MapPin, Search, Table2, ImageIcon,
 } from "lucide-react"
 import { apiUrl, broadcastAuthUrl, getReverbEchoConfig } from "@/lib/api-base"
 import {
@@ -22,6 +22,7 @@ import {
   WarRoomPayload,
   fetchWarRoom,
 } from "@/lib/war-room"
+import { VerificationImageModal } from "@/components/verification-image-modal"
 
 const MapWithNoSSR = dynamic(() => import("@/components/LiveMap"), {
   ssr: false,
@@ -68,6 +69,11 @@ export default function WarRoomPage() {
   const [role, setRole] = useState("")
   const [tenantId, setTenantId] = useState("")
   const [tenants, setTenants] = useState<TenantOption[]>([])
+  const [imageView, setImageView] = useState<{
+    id: string
+    variant: "primary" | "secondary"
+    title: string
+  } | null>(null)
 
   const token = typeof window !== "undefined" ? localStorage.getItem("vf_token") ?? "" : ""
 
@@ -422,38 +428,42 @@ export default function WarRoomPage() {
                           setTab("map")
                         }}
                       >
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-1">
-                            {row.image_url ? (
-                              <a
-                                href={row.image_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <img
-                                  src={row.image_url}
-                                  alt="Primary"
-                                  className="h-10 w-10 rounded object-cover border border-border"
-                                />
-                              </a>
+                            {row.latest_verification_id ? (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  title="Primary photo"
+                                  onClick={() => setImageView({
+                                    id: row.latest_verification_id!,
+                                    variant: "primary",
+                                    title: row.unit_name ?? "Primary",
+                                  })}
+                                >
+                                  <ImageIcon className="h-4 w-4" />
+                                </Button>
+                                {row.secondary_image_url && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-8 p-0"
+                                    title="Secondary photo"
+                                    onClick={() => setImageView({
+                                      id: row.latest_verification_id!,
+                                      variant: "secondary",
+                                      title: `${row.unit_name ?? "Unit"} secondary`,
+                                    })}
+                                  >
+                                    <ImageIcon className="h-4 w-4 opacity-60" />
+                                  </Button>
+                                )}
+                              </>
                             ) : (
                               <span className="text-xs text-muted-foreground">—</span>
                             )}
-                            {row.secondary_image_url ? (
-                              <a
-                                href={row.secondary_image_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <img
-                                  src={row.secondary_image_url}
-                                  alt="Secondary"
-                                  className="h-10 w-10 rounded object-cover border border-border opacity-90"
-                                />
-                              </a>
-                            ) : null}
                           </div>
                         </TableCell>
                         <TableCell className="font-medium">{row.unit_name}</TableCell>
@@ -496,6 +506,15 @@ export default function WarRoomPage() {
             </Table>
           </Card>
         </div>
+      )}
+
+      {imageView && (
+        <VerificationImageModal
+          verificationId={imageView.id}
+          variant={imageView.variant}
+          title={imageView.title}
+          onClose={() => setImageView(null)}
+        />
       )}
     </div>
   )

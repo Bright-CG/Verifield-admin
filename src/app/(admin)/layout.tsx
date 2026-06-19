@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   LayoutDashboard, Map, Users, FileText, LogOut, UserCheck, Upload, Settings,
-  ShieldAlert, Menu, X,
+  Menu, X, ClipboardList, BarChart3,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { cn } from "@/lib/utils"
@@ -14,7 +14,8 @@ import { apiUrl } from "@/lib/api-base"
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/war-room", label: "War Room", icon: Map },
-  { href: "/war-room?tab=submissions", label: "Submissions", icon: ShieldAlert, tenantScoped: true },
+  { href: "/submissions", label: "Submissions", icon: ClipboardList, tenantScoped: true },
+  { href: "/ec8a", label: "EC8A", icon: BarChart3, tenantScoped: true },
   { href: "/tenants", label: "Tenants & Config", icon: Users, superOnly: true },
   { href: "/staff", label: "Staff Management", icon: UserCheck, tenantScoped: true, tenantLabel: true },
   { href: "/import", label: "Bulk Import", icon: Upload, tenantScoped: true },

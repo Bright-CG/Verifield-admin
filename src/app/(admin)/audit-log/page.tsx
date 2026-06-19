@@ -186,9 +186,35 @@ export default function AuditLogPage() {
                         <summary className="text-xs text-primary flex items-center gap-1">
                           <Info className="h-3 w-3" /> View
                         </summary>
-                        <pre className="mt-1 text-xs bg-muted p-2 rounded max-w-xs overflow-auto">
-                          {JSON.stringify(log.changes, null, 2)}
-                        </pre>
+                        <div className="mt-2 space-y-2 text-xs max-w-md">
+                          {log.action === "verification.submitted" && log.changes && (
+                            <div className="rounded border border-border bg-muted/40 p-2 space-y-1">
+                              {log.changes.unit_name && (
+                                <div><span className="text-muted-foreground">Unit:</span> {String(log.changes.unit_name)}</div>
+                              )}
+                              {log.changes.gps_lat != null && log.changes.gps_long != null && (
+                                <div className="font-mono">
+                                  <span className="text-muted-foreground">GPS:</span>{" "}
+                                  {Number(log.changes.gps_lat).toFixed(6)}, {Number(log.changes.gps_long).toFixed(6)}
+                                  {log.changes.accuracy != null && (
+                                    <span className="text-muted-foreground"> ±{Number(log.changes.accuracy).toFixed(0)}m</span>
+                                  )}
+                                </div>
+                              )}
+                              {log.entity_id && (
+                                <a
+                                  href={`/certificate/${log.entity_id}`}
+                                  className="inline-block text-primary hover:underline"
+                                >
+                                  Open certificate &amp; photos →
+                                </a>
+                              )}
+                            </div>
+                          )}
+                          <pre className="bg-muted p-2 rounded overflow-auto">
+                            {JSON.stringify(log.changes, null, 2)}
+                          </pre>
+                        </div>
                       </details>
                     ) : "—"}
                   </TableCell>

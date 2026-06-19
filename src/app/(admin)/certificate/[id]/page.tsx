@@ -5,9 +5,10 @@ import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   ShieldCheck, ShieldAlert, Printer, Download,
-  MapPin, Clock, User, Hash, Fingerprint
+  MapPin, Clock, User, Hash, Fingerprint, ImageIcon,
 } from "lucide-react"
 import { apiUrl } from "@/lib/api-base"
+import { VerificationImageModal } from "@/components/verification-image-modal"
 
 interface CertificateData {
   verification: {
@@ -44,6 +45,7 @@ export default function CertificatePage() {
   const [error, setError] = useState("")
   const [extracting, setExtracting] = useState(false)
   const [extractMsg, setExtractMsg] = useState("")
+  const [imageView, setImageView] = useState<"primary" | "secondary" | null>(null)
   const printRef = useRef<HTMLDivElement>(null)
 
   const token = typeof window !== "undefined" ? localStorage.getItem("vf_token") : ""
@@ -259,26 +261,26 @@ export default function CertificatePage() {
                 <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                   <Fingerprint className="w-3 h-3" /> Captured Evidence
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="flex flex-wrap gap-2 print:hidden">
                   {v.image_url && (
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Primary (EC8A front)</p>
-                      <img
-                        src={v.image_url}
-                        alt="Primary field evidence"
-                        className="w-full max-h-64 object-contain rounded-lg border border-border bg-muted"
-                      />
-                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => setImageView("primary")}
+                    >
+                      <ImageIcon className="h-4 w-4" /> View primary
+                    </Button>
                   )}
                   {v.secondary_image_url && (
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Secondary</p>
-                      <img
-                        src={v.secondary_image_url}
-                        alt="Secondary field evidence"
-                        className="w-full max-h-64 object-contain rounded-lg border border-border bg-muted"
-                      />
-                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => setImageView("secondary")}
+                    >
+                      <ImageIcon className="h-4 w-4" /> View secondary
+                    </Button>
                   )}
                 </div>
               </div>
@@ -310,6 +312,14 @@ export default function CertificatePage() {
           </div>
         </div>
       </div>
+
+      {imageView && id && (
+        <VerificationImageModal
+          verificationId={id}
+          variant={imageView}
+          onClose={() => setImageView(null)}
+        />
+      )}
     </div>
   )
 }
