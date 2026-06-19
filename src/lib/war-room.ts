@@ -15,6 +15,7 @@ export interface WarRoomMapUnit {
   flag: SubmissionFlag
   latest_verification_id: string | null
   image_url: string | null
+  secondary_image_url?: string | null
   agent_name: string | null
   verified_at: string | null
 }
@@ -30,6 +31,7 @@ export interface SubmissionRow {
   flag: SubmissionFlag
   latest_verification_id: string | null
   image_url: string | null
+  secondary_image_url?: string | null
   ec8a_status: string | null
   capture_lat?: number | null
   capture_long?: number | null

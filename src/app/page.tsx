@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { FadeIn, HeroGlow } from "@/components/fade-in"
 import {
   ShieldCheck,
   MapPin,
@@ -177,26 +178,30 @@ export default function LandingPage() {
       <main className="flex-1">
         {/* ─── HERO ─── */}
         <section className="relative py-28 md:py-40 px-6 text-center overflow-hidden">
-          {/* Ambient glow */}
-          <div className="absolute inset-0 -z-10">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-primary/10 blur-[120px] rounded-full" />
-          </div>
+          <HeroGlow />
 
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/30 bg-primary/5 text-primary text-sm font-medium mb-8">
-            <ShieldCheck className="w-4 h-4" />
-            Court-Admissible Field Verification Engine
-          </div>
+          <FadeIn>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/30 bg-primary/5 text-primary text-sm font-medium mb-8">
+              <ShieldCheck className="w-4 h-4" />
+              Court-Admissible Field Verification Engine
+            </div>
+          </FadeIn>
 
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight max-w-5xl mx-auto leading-tight mb-6">
-            Zero-Trust Proof of Action.{" "}
-            <span className="text-primary">From Field to Court.</span>
-          </h1>
+          <FadeIn delay={100}>
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight max-w-5xl mx-auto leading-tight mb-6">
+              Zero-Trust Proof of Action.{" "}
+              <span className="text-primary">From Field to Court.</span>
+            </h1>
+          </FadeIn>
 
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            Whether your agent is verifying a pharmacy stock in Lagos or recording a polling result in a remote LGA, VeriField generates a mathematically tamper-proof receipt—anchored to hardware, signed by cryptography, and sealed by the database itself.
-          </p>
+          <FadeIn delay={200}>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+              Whether your agent is verifying a pharmacy stock in Lagos or recording a polling result in a remote LGA, VeriField generates a mathematically tamper-proof receipt—anchored to hardware, signed by cryptography, and sealed by the database itself.
+            </p>
+          </FadeIn>
 
-          <div className="flex flex-wrap gap-4 justify-center">
+          <FadeIn delay={300}>
+            <div className="flex flex-wrap gap-4 justify-center">
             <Link href="/signup">
               <Button size="lg" className="h-12 px-8 text-base bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25">
                 Start Free Trial <ChevronRight className="ml-1 w-4 h-4" />
@@ -218,6 +223,7 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+          </FadeIn>
         </section>
 
         {/* ─── DUAL MODE BANNER ─── */}
@@ -251,23 +257,27 @@ export default function LandingPage() {
         {/* ─── FEATURES ─── */}
         <section id="features" className="py-24 px-6">
           <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold mb-4">
-                Built to be <span className="text-primary">Mathematically Stubborn</span>
-              </h2>
-              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                Every layer—hardware, app, API, and database—is designed to make data tampering not just difficult, but mathematically impossible.
-              </p>
-            </div>
+            <FadeIn>
+              <div className="text-center mb-16">
+                <h2 className="text-4xl font-bold mb-4">
+                  Built to be <span className="text-primary">Mathematically Stubborn</span>
+                </h2>
+                <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                  Every layer—hardware, app, API, and database—is designed to make data tampering not just difficult, but mathematically impossible.
+                </p>
+              </div>
+            </FadeIn>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {features.map((feature) => (
-                <div key={feature.title} className="p-6 rounded-2xl border border-border bg-card hover:border-primary/40 transition-colors group">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                    <feature.icon className="w-5 h-5 text-primary" />
+              {features.map((feature, i) => (
+                <FadeIn key={feature.title} delay={i * 60}>
+                  <div className="p-6 rounded-2xl border border-border bg-card hover:border-primary/40 transition-colors group h-full">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                      <feature.icon className="w-5 h-5 text-primary" />
+                    </div>
+                    <h3 className="font-semibold mb-2">{feature.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
                   </div>
-                  <h3 className="font-semibold mb-2">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
-                </div>
+                </FadeIn>
               ))}
             </div>
           </div>

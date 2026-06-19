@@ -19,6 +19,7 @@ interface CertificateData {
     hash_chain: string
     hash_previous: string
     image_url: string
+    secondary_image_url?: string | null
     accuracy: number
     metadata: { distance_from_unit: number; is_off_site: boolean }
     user: { name: string; email: string }
@@ -250,20 +251,36 @@ export default function CertificatePage() {
             </div>
           </div>
 
-          {/* Captured Image */}
-          {v.image_url && (
+          {/* Captured Images */}
+          {(v.image_url || v.secondary_image_url) && (
             <>
               <div className="border-t border-border" />
               <div>
                 <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                   <Fingerprint className="w-3 h-3" /> Captured Evidence
                 </div>
-                <img
-                  src={v.image_url}
-                  alt="Field evidence capture"
-                  className="w-full max-h-64 object-contain rounded-lg border border-border bg-muted"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {v.image_url && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Primary (EC8A front)</p>
+                      <img
+                        src={v.image_url}
+                        alt="Primary field evidence"
+                        className="w-full max-h-64 object-contain rounded-lg border border-border bg-muted"
+                      />
+                    </div>
+                  )}
+                  {v.secondary_image_url && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Secondary</p>
+                      <img
+                        src={v.secondary_image_url}
+                        alt="Secondary field evidence"
+                        className="w-full max-h-64 object-contain rounded-lg border border-border bg-muted"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           )}

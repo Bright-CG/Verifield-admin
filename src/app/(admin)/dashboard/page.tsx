@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
   Users, ShieldCheck, Activity, TrendingUp, Map, AlertTriangle,
-  RefreshCw,
+  RefreshCw, FileSpreadsheet,
 } from "lucide-react"
 import { apiUrl } from "@/lib/api-base"
 import { fetchAdminDashboard, type DashboardPayload } from "@/lib/admin-dashboard"
@@ -67,12 +67,13 @@ export default function DashboardPage() {
         { title: "Verifications Today", value: stats.verifications_today, icon: ShieldCheck, note: "All tenants" },
         { title: "Active Field Agents", value: stats.active_agents, icon: TrendingUp, note: "Staff accounts" },
         { title: "Total Verifications", value: stats.total_verifications, icon: Activity, note: "Immutable ledger" },
+        { title: "EC8A Extracted", value: stats.ec8a_extractions, icon: FileSpreadsheet, note: "Result sheets OCR/manual" },
       ]
     : [
         { title: "Units on Map", value: stats.total_units, icon: Map, note: "With coordinates" },
         { title: "Verified", value: stats.verified, icon: ShieldCheck, note: "Latest status per unit" },
         { title: "Verifications Today", value: stats.verifications_today, icon: Activity, note: "Server timestamp" },
-        { title: "Submissions", value: stats.submissions ?? stats.verified, icon: ShieldCheck, note: "Units with captured results" },
+        { title: "EC8A Extracted", value: stats.ec8a_extractions, icon: FileSpreadsheet, note: "Sheets with parsed results" },
       ]
 
   return (

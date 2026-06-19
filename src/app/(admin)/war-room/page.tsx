@@ -383,6 +383,7 @@ export default function WarRoomPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
+                  <TableHead>Photos</TableHead>
                   <TableHead>Unit</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Agent</TableHead>
@@ -396,7 +397,7 @@ export default function WarRoomPage() {
                 {loading ? (
                   [...Array(4)].map((_, i) => (
                     <TableRow key={i} className="border-border">
-                      {[...Array(7)].map((_, j) => (
+                      {[...Array(8)].map((_, j) => (
                         <TableCell key={j}>
                           <div className="h-4 bg-muted rounded animate-pulse" />
                         </TableCell>
@@ -405,7 +406,7 @@ export default function WarRoomPage() {
                   ))
                 ) : filteredRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                       No submitted results yet.
                     </TableCell>
                   </TableRow>
@@ -421,6 +422,40 @@ export default function WarRoomPage() {
                           setTab("map")
                         }}
                       >
+                        <TableCell>
+                          <div className="flex gap-1">
+                            {row.image_url ? (
+                              <a
+                                href={row.image_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <img
+                                  src={row.image_url}
+                                  alt="Primary"
+                                  className="h-10 w-10 rounded object-cover border border-border"
+                                />
+                              </a>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                            {row.secondary_image_url ? (
+                              <a
+                                href={row.secondary_image_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <img
+                                  src={row.secondary_image_url}
+                                  alt="Secondary"
+                                  className="h-10 w-10 rounded object-cover border border-border opacity-90"
+                                />
+                              </a>
+                            ) : null}
+                          </div>
+                        </TableCell>
                         <TableCell className="font-medium">{row.unit_name}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {[row.state, row.lga, row.ward].filter(Boolean).join(" › ")}
