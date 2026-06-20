@@ -29,17 +29,20 @@ export default function SubmissionsPage() {
   const [tenantId, setTenantId] = useState("")
   const [tenants, setTenants] = useState<TenantOption[]>([])
   const [imageView, setImageView] = useState<ImageView | null>(null)
+  const [loadError, setLoadError] = useState("")
 
   const token = typeof window !== "undefined" ? localStorage.getItem("vf_token") ?? "" : ""
 
   const load = useCallback(async () => {
     setLoading(true)
-    const data = await fetchSubmissions(token, page, tenantId || undefined)
-    if (data) {
-      setItems(data.data ?? [])
-      setLastPage(data.last_page ?? 1)
+    setLoadError("")
+    const result = await fetchSubmissions(token, page, tenantId || undefined)
+    if (result.page) {
+      setItems(result.page.data ?? [])
+      setLastPage(result.page.last_page ?? 1)
     } else {
       setItems([])
+      setLoadError(result.error ?? "Could not load submissions.")
     }
     setLoading(false)
   }, [token, page, tenantId])
@@ -94,13 +97,27 @@ export default function SubmissionsPage() {
         </Button>
       </div>
 
+      {loadError && (
+        <Card className="border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+          {loadError}
+          {role === "super_admin" && !tenantId && (
+            <span> Select an organisation above (same as War Room).</span>
+          )}
+        </Card>
+      )}
+
       {role === "super_admin" && (
         <Card className="border-border p-4">
           <label className="text-xs text-muted-foreground block mb-1">Organisation</label>
           <select
             className="w-full max-w-md rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={tenantId}
-            onChange={(e) => { setTenantId(e.target.value); setPage(1) }}
+            onChange={(e) => {
+              const v = e.target.value
+              setTenantId(v)
+              localStorage.setItem("vf_tenant_id", v)
+              setPage(1)
+            }}
           >
             <option value="">Select tenant…</option>
             {tenants.map((t) => (

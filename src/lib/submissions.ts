@@ -36,7 +36,7 @@ export async function fetchSubmissions(
   token: string,
   page = 1,
   tenantId?: string
-): Promise<SubmissionsPage | null> {
+): Promise<{ page: SubmissionsPage | null; error?: string }> {
   const params = new URLSearchParams({ page: String(page), per_page: "25" })
   if (tenantId) params.set("tenant_id", tenantId)
 
@@ -46,7 +46,13 @@ export async function fetchSubmissions(
       Accept: "application/json",
     },
   })
-  if (!res.ok) return null
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}))
+    return {
+      page: null,
+      error: (json as { message?: string }).message ?? `Submissions API error (${res.status})`,
+    }
+  }
   const json = await res.json()
-  return json.data as SubmissionsPage
+  return { page: json.data as SubmissionsPage }
 }
