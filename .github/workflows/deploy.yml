@@ -114,4 +114,10 @@ jobs:
             --exclude='.env.*' \
             ./ "${REMOTE}:${DEST}"
 
-          echo "=== deploy complete (run npm ci && npm run build on server if .next is not rsynced) ==="
+          echo "=== npm ci && npm run build on server ==="
+          ssh ${SSH_BASE} "${REMOTE}" "cd ${DEST} && npm ci && npm run build"
+
+          echo "=== pm2 restart verifield-admin ==="
+          ssh ${SSH_BASE} "${REMOTE}" "pm2 restart verifield-admin --update-env || pm2 start npm --name verifield-admin -- start"
+
+          echo "=== deploy complete ==="
