@@ -3,7 +3,8 @@
 import React, { useEffect, useState, useRef, useCallback } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import {
   ShieldCheck, ShieldAlert, Printer, Download,
   MapPin, Clock, User, Hash, Fingerprint, ImageIcon, ArrowLeft,
@@ -184,9 +185,12 @@ export default function CertificatePage() {
     return (
       <div className="max-w-lg mx-auto py-16 px-4 text-center space-y-4">
         <p className="text-destructive">{error || "Certificate not found."}</p>
-        <Button variant="outline" asChild>
-          <Link href="/submissions"><ArrowLeft className="h-4 w-4 mr-2" /> Back to submissions</Link>
-        </Button>
+        <Link
+          href="/submissions"
+          className={cn(buttonVariants({ variant: "outline" }), "inline-flex items-center")}
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" /> Back to submissions
+        </Link>
       </div>
     )
   }
