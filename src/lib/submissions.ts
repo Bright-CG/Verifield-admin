@@ -50,10 +50,3 @@ export async function fetchSubmissions(
   const json = await res.json()
   return json.data as SubmissionsPage
 }
-
-export function verificationMediaUrl(
-  verificationId: string,
-  variant: "primary" | "secondary"
-): string {
-  return apiUrl(`/api/v1/admin/verifications/${verificationId}/media/${variant}`)
-}
