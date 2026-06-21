@@ -200,9 +200,12 @@ export default function CertificatePage() {
   return (
     <div className="min-h-full bg-muted/30 p-4 md:p-6">
       <div className="print:hidden flex flex-wrap justify-between gap-3 mb-6 max-w-3xl mx-auto">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/submissions"><ArrowLeft className="h-4 w-4 mr-2" /> Submissions</Link>
-        </Button>
+        <Link
+          href="/submissions"
+          className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "inline-flex items-center")}
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" /> Submissions
+        </Link>
         <div className="flex flex-wrap justify-end gap-2">
           <Button
             variant="outline"
