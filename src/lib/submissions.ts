@@ -48,9 +48,11 @@ export async function fetchSubmissions(
   })
   if (!res.ok) {
     const json = await res.json().catch(() => ({}))
+    const body = json as { message?: string; exception?: string }
+    const detail = body.message ?? body.exception
     return {
       page: null,
-      error: (json as { message?: string }).message ?? `Submissions API error (${res.status})`,
+      error: detail ?? `Submissions API error (${res.status})`,
     }
   }
   const json = await res.json()
