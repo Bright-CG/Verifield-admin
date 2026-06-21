@@ -76,12 +76,14 @@ export function VerificationImageModal({
   onClose,
 }: VerificationImageModalProps) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
+  const [directUrl, setDirectUrl] = useState<string | null>(null)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError("")
+    setDirectUrl(null)
     setBlobUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev)
       return null
@@ -97,19 +99,22 @@ export function VerificationImageModal({
     const mediaUrl = verificationMediaUrl(verificationId, variant)
 
     try {
-      let result = await loadImageBlob(mediaUrl, token)
-
-      if (!result.blob && fallbackUrl) {
-        result = await loadImageBlob(fallbackUrl)
-      }
+      const result = await loadImageBlob(mediaUrl, token)
 
       if (result.blob) {
         setBlobUrl(URL.createObjectURL(result.blob))
+      } else if (fallbackUrl) {
+        // Public /storage URLs work in <img> without CORS; fetch() often fails cross-origin.
+        setDirectUrl(fallbackUrl)
       } else {
         setError(result.error || "Could not load image.")
       }
     } catch {
-      setError(`Network error loading image. API: ${apiUrl("")}`)
+      if (fallbackUrl) {
+        setDirectUrl(fallbackUrl)
+      } else {
+        setError(`Network error loading image. API: ${apiUrl("")}`)
+      }
     } finally {
       setLoading(false)
     }
@@ -164,12 +169,20 @@ export function VerificationImageModal({
                 </p>
               )}
             </div>
-          ) : blobUrl ? (
+          ) : blobUrl || directUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={blobUrl}
+              src={blobUrl ?? directUrl ?? ""}
               alt={title ?? "Verification capture"}
               className="max-h-[70vh] w-auto max-w-full rounded-md object-contain"
+              onError={() => {
+                if (directUrl && !blobUrl) {
+                  setError(
+                    "Image file is missing or not readable on the server. Ask ops to run: chmod -R o+rX storage/app/public/verification-images"
+                  )
+                  setDirectUrl(null)
+                }
+              }}
             />
           ) : null}
         </div>
