@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { apiUrl } from "@/lib/api-base"
 import { VerificationImageModal } from "@/components/verification-image-modal"
+import { Ec8aReviewPanel, Ec8aExtractionShape } from "@/components/ec8a-review-panel"
 
 interface CertificateData {
   verification: {
@@ -34,6 +35,7 @@ interface CertificateData {
   legal_statement?: string
   ec8a_extraction?: {
     status: string
+    review_status?: string
     data: Record<string, unknown> | null
     extracted_at: string | null
   } | null
@@ -115,9 +117,25 @@ export default function CertificatePage() {
   const [extracting, setExtracting] = useState(false)
   const [extractMsg, setExtractMsg] = useState("")
   const [imageView, setImageView] = useState<"primary" | "secondary" | null>(null)
+  const [extraction, setExtraction] = useState<Ec8aExtractionShape | null>(null)
   const printRef = useRef<HTMLDivElement>(null)
 
   const token = typeof window !== "undefined" ? localStorage.getItem("vf_token") : ""
+
+  const loadResultSheet = useCallback(async () => {
+    if (!id || !token) return
+    try {
+      const res = await fetch(apiUrl(`/api/v1/verifications/${id}/result-sheet`), {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      })
+      if (!res.ok) return
+      const json = await res.json()
+      const ext = json.data?.extraction as Ec8aExtractionShape | undefined
+      if (ext) setExtraction(ext)
+    } catch {
+      /* optional */
+    }
+  }, [id, token])
 
   const loadCertificate = useCallback(async () => {
     if (!id) return
@@ -140,13 +158,14 @@ export default function CertificatePage() {
         return
       }
       setData(normalized)
+      await loadResultSheet()
     } catch {
       setError("Failed to load certificate — check your connection and API URL.")
       setData(null)
     } finally {
       setLoading(false)
     }
-  }, [id, token])
+  }, [id, token, loadResultSheet])
 
   useEffect(() => {
     void loadCertificate()
@@ -163,7 +182,10 @@ export default function CertificatePage() {
       })
       const json = await res.json()
       setExtractMsg(json.message ?? (res.ok ? "Extraction complete." : "Extraction failed."))
-      if (res.ok) await loadCertificate()
+      if (res.ok) {
+        await loadCertificate()
+        await loadResultSheet()
+      }
     } catch {
       setExtractMsg("Could not run EC8A extraction.")
     } finally {
@@ -385,7 +407,7 @@ export default function CertificatePage() {
                 <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                   EC8A result sheet (extracted)
                 </div>
-                <pre className="text-xs bg-muted p-4 rounded-lg overflow-auto max-h-64">
+                <pre className="text-xs bg-muted p-4 rounded-lg overflow-auto max-h-64 print:block">
                   {JSON.stringify(data.ec8a_extraction.data, null, 2)}
                 </pre>
                 <p className="text-xs text-muted-foreground mt-2">
@@ -397,6 +419,22 @@ export default function CertificatePage() {
               </div>
             </>
           )}
+
+          <div className="border-t border-border print:hidden" />
+          <div className="print:hidden">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              Party reviewer — verify & approve
+            </div>
+            <Ec8aReviewPanel
+              verificationId={id}
+              token={token ?? ""}
+              extraction={extraction}
+              onUpdated={() => {
+                void loadCertificate()
+                void loadResultSheet()
+              }}
+            />
+          </div>
 
           <div className="border-t border-border pt-4 text-center text-xs text-muted-foreground">
             <p>This certificate is system-generated and cryptographically linked to an immutable audit trail.</p>
