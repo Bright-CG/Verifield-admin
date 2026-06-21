@@ -73,6 +73,7 @@ export default function WarRoomPage() {
     id: string
     variant: "primary" | "secondary"
     title: string
+    fallbackUrl?: string | null
   } | null>(null)
 
   const token = typeof window !== "undefined" ? localStorage.getItem("vf_token") ?? "" : ""
@@ -441,6 +442,7 @@ export default function WarRoomPage() {
                                     id: row.latest_verification_id!,
                                     variant: "primary",
                                     title: row.unit_name ?? "Primary",
+                                    fallbackUrl: row.image_url,
                                   })}
                                 >
                                   <ImageIcon className="h-4 w-4" />
@@ -455,6 +457,7 @@ export default function WarRoomPage() {
                                       id: row.latest_verification_id!,
                                       variant: "secondary",
                                       title: `${row.unit_name ?? "Unit"} secondary`,
+                                      fallbackUrl: row.secondary_image_url,
                                     })}
                                   >
                                     <ImageIcon className="h-4 w-4 opacity-60" />
@@ -513,6 +516,7 @@ export default function WarRoomPage() {
           verificationId={imageView.id}
           variant={imageView.variant}
           title={imageView.title}
+          fallbackUrl={imageView.fallbackUrl}
           onClose={() => setImageView(null)}
         />
       )}

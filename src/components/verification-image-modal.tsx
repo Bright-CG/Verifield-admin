@@ -9,6 +9,8 @@ interface VerificationImageModalProps {
   verificationId: string
   variant: "primary" | "secondary"
   title?: string
+  /** Public storage URL fallback when authenticated stream fails */
+  fallbackUrl?: string | null
   onClose: () => void
 }
 
@@ -19,10 +21,58 @@ export function verificationMediaUrl(
   return apiUrl(`/api/v1/admin/verifications/${verificationId}/media/${variant}`)
 }
 
+async function loadImageBlob(
+  url: string,
+  token?: string
+): Promise<{ blob: Blob | null; error: string }> {
+  const headers: Record<string, string> = {
+    Accept: "image/jpeg, image/png, image/webp, application/json",
+  }
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const res = await fetch(url, { headers })
+
+  const contentType = res.headers.get("content-type") ?? ""
+
+  if (!res.ok) {
+    let message = `Could not load image (HTTP ${res.status}).`
+    try {
+      const text = await res.text()
+      if (text) {
+        try {
+          const json = JSON.parse(text) as { message?: string; path?: string }
+          if (json.message) message = json.message
+          if (json.path) message += ` Path: ${json.path}`
+        } catch {
+          if (text.length < 200) message = text
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    return { blob: null, error: message }
+  }
+
+  if (!contentType.startsWith("image/")) {
+    return {
+      blob: null,
+      error: "Server did not return an image. The file may be missing on storage.",
+    }
+  }
+
+  const blob = await res.blob()
+  if (blob.size === 0) {
+    return { blob: null, error: "Image file is empty on the server." }
+  }
+
+  return { blob, error: "" }
+}
+
 export function VerificationImageModal({
   verificationId,
   variant,
   title,
+  fallbackUrl,
   onClose,
 }: VerificationImageModalProps) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
@@ -44,50 +94,26 @@ export function VerificationImageModal({
       return
     }
 
-    const url = verificationMediaUrl(verificationId, variant)
+    const mediaUrl = verificationMediaUrl(verificationId, variant)
 
     try {
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "image/jpeg, image/png, image/webp, application/json",
-        },
-      })
+      let result = await loadImageBlob(mediaUrl, token)
 
-      const contentType = res.headers.get("content-type") ?? ""
-
-      if (!res.ok) {
-        let message = `Could not load image (HTTP ${res.status}).`
-        if (contentType.includes("application/json")) {
-          const json = await res.json().catch(() => null)
-          if (json?.message) message = String(json.message)
-          if (json?.path) message += ` Path: ${json.path}`
-        }
-        setError(message)
-        setLoading(false)
-        return
+      if (!result.blob && fallbackUrl) {
+        result = await loadImageBlob(fallbackUrl)
       }
 
-      if (!contentType.startsWith("image/")) {
-        setError("Server did not return an image. The file may be missing on storage.")
-        setLoading(false)
-        return
+      if (result.blob) {
+        setBlobUrl(URL.createObjectURL(result.blob))
+      } else {
+        setError(result.error || "Could not load image.")
       }
-
-      const blob = await res.blob()
-      if (blob.size === 0) {
-        setError("Image file is empty on the server.")
-        setLoading(false)
-        return
-      }
-
-      setBlobUrl(URL.createObjectURL(blob))
     } catch {
       setError(`Network error loading image. API: ${apiUrl("")}`)
     } finally {
       setLoading(false)
     }
-  }, [verificationId, variant])
+  }, [verificationId, variant, fallbackUrl])
 
   useEffect(() => {
     void load()
@@ -132,9 +158,11 @@ export function VerificationImageModal({
           ) : error ? (
             <div className="text-center text-sm text-destructive max-w-md space-y-2">
               <p>{error}</p>
-              <p className="text-xs text-muted-foreground">
-                Tip: use the <strong>Primary</strong> button on Submissions (not Certificate) for fastest access.
-              </p>
+              {fallbackUrl && (
+                <p className="text-xs text-muted-foreground break-all">
+                  Storage URL: {fallbackUrl}
+                </p>
+              )}
             </div>
           ) : blobUrl ? (
             // eslint-disable-next-line @next/next/no-img-element

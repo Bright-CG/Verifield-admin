@@ -18,7 +18,12 @@ interface TenantOption {
   name: string
 }
 
-type ImageView = { id: string; variant: "primary" | "secondary"; title: string }
+type ImageView = {
+  id: string
+  variant: "primary" | "secondary"
+  title: string
+  fallbackUrl?: string | null
+}
 
 export default function SubmissionsPage() {
   const [items, setItems] = useState<SubmissionItem[]>([])
@@ -203,6 +208,7 @@ export default function SubmissionsPage() {
                             id: row.id,
                             variant: "primary",
                             title: `${row.unit_name ?? "Unit"} — primary`,
+                            fallbackUrl: row.image_url,
                           })}
                         >
                           <ImageIcon className="h-3 w-3" /> Primary
@@ -217,6 +223,7 @@ export default function SubmissionsPage() {
                             id: row.id,
                             variant: "secondary",
                             title: `${row.unit_name ?? "Unit"} — secondary`,
+                            fallbackUrl: row.secondary_image_url,
                           })}
                         >
                           <ImageIcon className="h-3 w-3" /> Secondary
@@ -254,6 +261,7 @@ export default function SubmissionsPage() {
           verificationId={imageView.id}
           variant={imageView.variant}
           title={imageView.title}
+          fallbackUrl={imageView.fallbackUrl}
           onClose={() => setImageView(null)}
         />
       )}

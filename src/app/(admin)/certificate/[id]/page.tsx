@@ -409,6 +409,9 @@ export default function CertificatePage() {
         <VerificationImageModal
           verificationId={id}
           variant={imageView}
+          fallbackUrl={
+            imageView === "secondary" ? v.secondary_image_url : v.image_url
+          }
           onClose={() => setImageView(null)}
         />
       )}
