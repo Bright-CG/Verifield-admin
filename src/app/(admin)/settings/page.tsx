@@ -19,6 +19,7 @@ interface SystemConfig {
   subscriptions_enabled: boolean
   min_app_version: string
   maintenance_mode: boolean
+  active_ocr_engine: "paddle" | "vision"
   integrations: {
     map_api_key: string
     storage_access_key: string
@@ -49,6 +50,7 @@ export default function SettingsPage() {
     subscriptions_enabled: true,
     min_app_version: "1.0.0",
     maintenance_mode: false,
+    active_ocr_engine: "paddle",
     integrations: {
       map_api_key: "",
       storage_access_key: "",
@@ -86,6 +88,7 @@ export default function SettingsPage() {
           setConfig(prev => ({
             ...prev,
             ...json.data,
+            active_ocr_engine: json.data.active_ocr_engine === "vision" ? "vision" : "paddle",
             integrations: {
               ...prev.integrations,
               ...(json.data.integrations ?? {}),
@@ -261,6 +264,34 @@ export default function SettingsPage() {
             </div>
           </Card>
 
+          {/* Server OCR Engine (Super Admin global toggle) */}
+          <Card className="p-6 border-border space-y-6">
+            <div className="flex items-center gap-2 font-semibold text-lg border-b border-border pb-4">
+              <Settings className="w-5 h-5 text-primary" />
+              Server OCR Engine
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="active_ocr_engine">Active Server OCR Engine</Label>
+              <select
+                id="active_ocr_engine"
+                value={config.active_ocr_engine}
+                onChange={e => setConfig({
+                  ...config,
+                  active_ocr_engine: e.target.value === "vision" ? "vision" : "paddle",
+                })}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="paddle">PaddleOCR (Local, Free)</option>
+                <option value="vision">Google Vision API (Cloud, Paid)</option>
+              </select>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Applies globally to all EC8A extractions after field agents sync captures.
+                PaddleOCR runs on this VPS via the Python microservice on port 8000.
+                Vision API uses the key below when selected as fallback.
+              </p>
+            </div>
+          </Card>
+
           {/* Integration Secrets */}
           <Card className="p-6 border-border space-y-6">
             <div className="flex items-center gap-2 font-semibold text-lg border-b border-border pb-4">
@@ -336,7 +367,7 @@ export default function SettingsPage() {
                 />
               </div>
               <div className="grid gap-2 md:col-span-2">
-                <Label htmlFor="vision_api_key">EC8A Vision API Key (OpenAI-compatible)</Label>
+                <Label htmlFor="vision_api_key">Vision API Key (OpenAI-compatible fallback)</Label>
                 <Input
                   id="vision_api_key"
                   type="password"
@@ -348,7 +379,7 @@ export default function SettingsPage() {
                   })}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Used to read handwritten EC8A result sheets from captured photos. Stored in System Settings only.
+                  Used when Active Server OCR Engine is set to Vision API. Not required for PaddleOCR.
                 </p>
               </div>
               <div className="grid gap-2">
