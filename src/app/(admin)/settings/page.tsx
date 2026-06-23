@@ -19,7 +19,7 @@ interface SystemConfig {
   subscriptions_enabled: boolean
   min_app_version: string
   maintenance_mode: boolean
-  active_ocr_engine: "paddle" | "vision"
+  active_ocr_engine: "paddle" | "openai" | "google"
   integrations: {
     map_api_key: string
     storage_access_key: string
@@ -27,9 +27,11 @@ interface SystemConfig {
     play_integrity_key: string
     devicecheck_key: string
     reverb_app_key: string
-    vision_api_key: string
-    vision_api_url: string
-    vision_api_model: string
+    paddle_ocr_url: string
+    openai_api_key: string
+    openai_api_url: string
+    openai_api_model: string
+    google_vision_api_key: string
     billing_secret: string
     mail_provider: string
     mail_from_address: string
@@ -50,7 +52,7 @@ export default function SettingsPage() {
     subscriptions_enabled: true,
     min_app_version: "1.0.0",
     maintenance_mode: false,
-    active_ocr_engine: "paddle",
+    active_ocr_engine: "google",
     integrations: {
       map_api_key: "",
       storage_access_key: "",
@@ -58,9 +60,11 @@ export default function SettingsPage() {
       play_integrity_key: "",
       devicecheck_key: "",
       reverb_app_key: "",
-      vision_api_key: "",
-      vision_api_url: "https://api.openai.com/v1/chat/completions",
-      vision_api_model: "gpt-4o-mini",
+      paddle_ocr_url: "http://127.0.0.1:8107",
+      openai_api_key: "",
+      openai_api_url: "https://api.openai.com/v1/chat/completions",
+      openai_api_model: "gpt-4o-mini",
+      google_vision_api_key: "",
       billing_secret: "",
       mail_provider: "",
       mail_from_address: "",
@@ -85,15 +89,38 @@ export default function SettingsPage() {
       .then(r => r.json())
       .then(json => {
         if (json.data) {
-          setConfig(prev => ({
-            ...prev,
-            ...json.data,
-            active_ocr_engine: json.data.active_ocr_engine === "vision" ? "vision" : "paddle",
-            integrations: {
+          setConfig(prev => {
+            const integrations = {
               ...prev.integrations,
               ...(json.data.integrations ?? {}),
-            },
-          }))
+            }
+            const legacy = integrations as typeof integrations & {
+              vision_api_key?: string
+              vision_api_url?: string
+              vision_api_model?: string
+            }
+            if (!integrations.openai_api_key && legacy.vision_api_key) {
+              integrations.openai_api_key = legacy.vision_api_key
+            }
+            if (!integrations.openai_api_url && legacy.vision_api_url) {
+              integrations.openai_api_url = legacy.vision_api_url
+            }
+            if (!integrations.openai_api_model && legacy.vision_api_model) {
+              integrations.openai_api_model = legacy.vision_api_model
+            }
+            const engine = json.data.active_ocr_engine
+            const activeOcrEngine =
+              engine === "vision" ? "openai"
+              : engine === "openai" || engine === "google" || engine === "paddle" ? engine
+              : "paddle"
+
+            return {
+              ...prev,
+              ...json.data,
+              active_ocr_engine: activeOcrEngine,
+              integrations,
+            }
+          })
         }
         setLoading(false)
       })
@@ -270,25 +297,111 @@ export default function SettingsPage() {
               <Settings className="w-5 h-5 text-primary" />
               Server OCR Engine
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="active_ocr_engine">Active Server OCR Engine</Label>
-              <select
-                id="active_ocr_engine"
-                value={config.active_ocr_engine}
-                onChange={e => setConfig({
-                  ...config,
-                  active_ocr_engine: e.target.value === "vision" ? "vision" : "paddle",
-                })}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="paddle">PaddleOCR (Local, Free)</option>
-                <option value="vision">Google Vision API (Cloud, Paid)</option>
-              </select>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Applies globally to all EC8A extractions after field agents sync captures.
-                PaddleOCR runs on this VPS via the Python microservice on port 8000.
-                Vision API uses the key below when selected as fallback.
-              </p>
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="active_ocr_engine">Active Server OCR Engine</Label>
+                <select
+                  id="active_ocr_engine"
+                  value={config.active_ocr_engine}
+                  onChange={e => setConfig({
+                    ...config,
+                    active_ocr_engine: e.target.value as SystemConfig["active_ocr_engine"],
+                  })}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="paddle">PaddleOCR (Local, Free)</option>
+                  <option value="openai">OpenAI GPT Vision (Cloud, Paid)</option>
+                  <option value="google">Google Cloud Vision (Cloud, Paid)</option>
+                </select>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Applies globally to all EC8A extractions after field agents sync captures.
+                  Google Cloud Vision is recommended for election-scale volume (~200k images).
+                </p>
+              </div>
+
+              {config.active_ocr_engine === "paddle" && (
+                <div className="grid gap-2 rounded-lg border border-border p-4 bg-muted/30">
+                  <Label htmlFor="paddle_ocr_url">PaddleOCR Service URL</Label>
+                  <Input
+                    id="paddle_ocr_url"
+                    value={config.integrations.paddle_ocr_url}
+                    onChange={e => setConfig({
+                      ...config,
+                      integrations: { ...config.integrations, paddle_ocr_url: e.target.value },
+                    })}
+                    placeholder="http://127.0.0.1:8107"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Requires the Python microservice running on this VPS (PM2 process{" "}
+                    <code className="text-xs">verifield-ocr</code> on port 8107).
+                  </p>
+                </div>
+              )}
+
+              {config.active_ocr_engine === "openai" && (
+                <div className="grid gap-4 rounded-lg border border-border p-4 bg-muted/30">
+                  <div className="grid gap-2">
+                    <Label htmlFor="openai_api_key">OpenAI API Key</Label>
+                    <Input
+                      id="openai_api_key"
+                      type="password"
+                      placeholder="sk-..."
+                      value={config.integrations.openai_api_key}
+                      onChange={e => setConfig({
+                        ...config,
+                        integrations: { ...config.integrations, openai_api_key: e.target.value },
+                      })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="openai_api_url">OpenAI API URL</Label>
+                    <Input
+                      id="openai_api_url"
+                      value={config.integrations.openai_api_url}
+                      onChange={e => setConfig({
+                        ...config,
+                        integrations: { ...config.integrations, openai_api_url: e.target.value },
+                      })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="openai_api_model">OpenAI Model</Label>
+                    <Input
+                      id="openai_api_model"
+                      value={config.integrations.openai_api_model}
+                      onChange={e => setConfig({
+                        ...config,
+                        integrations: { ...config.integrations, openai_api_model: e.target.value },
+                      })}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Uses GPT vision to return structured EC8A JSON directly. Higher cost at scale than Google Vision.
+                  </p>
+                </div>
+              )}
+
+              {config.active_ocr_engine === "google" && (
+                <div className="grid gap-2 rounded-lg border border-border p-4 bg-muted/30">
+                  <Label htmlFor="google_vision_api_key">Google Cloud Vision API Key</Label>
+                  <Input
+                    id="google_vision_api_key"
+                    type="password"
+                    placeholder="AIza..."
+                    value={config.integrations.google_vision_api_key}
+                    onChange={e => setConfig({
+                      ...config,
+                      integrations: { ...config.integrations, google_vision_api_key: e.target.value },
+                    })}
+                  />
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Primary auth for Super Admin. Restrict the key to Cloud Vision API and your VPS egress IP.
+                    Alternatively, set a service account JSON on the server via{" "}
+                    <code className="text-xs">GOOGLE_APPLICATION_CREDENTIALS</code> in{" "}
+                    <code className="text-xs">.env</code> (used when no API key is saved here).
+                  </p>
+                </div>
+              )}
             </div>
           </Card>
 
@@ -363,33 +476,6 @@ export default function SettingsPage() {
                   onChange={e => setConfig({
                     ...config,
                     integrations: { ...config.integrations, reverb_app_key: e.target.value },
-                  })}
-                />
-              </div>
-              <div className="grid gap-2 md:col-span-2">
-                <Label htmlFor="vision_api_key">Vision API Key (OpenAI-compatible fallback)</Label>
-                <Input
-                  id="vision_api_key"
-                  type="password"
-                  placeholder="sk-..."
-                  value={config.integrations.vision_api_key}
-                  onChange={e => setConfig({
-                    ...config,
-                    integrations: { ...config.integrations, vision_api_key: e.target.value },
-                  })}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Used when Active Server OCR Engine is set to Vision API. Not required for PaddleOCR.
-                </p>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="vision_api_model">Vision model</Label>
-                <Input
-                  id="vision_api_model"
-                  value={config.integrations.vision_api_model}
-                  onChange={e => setConfig({
-                    ...config,
-                    integrations: { ...config.integrations, vision_api_model: e.target.value },
                   })}
                 />
               </div>
