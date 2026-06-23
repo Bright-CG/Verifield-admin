@@ -58,3 +58,21 @@ export async function fetchSubmissions(
   const json = await res.json()
   return { page: json.data as SubmissionsPage }
 }
+
+export async function retryEc8aExtraction(
+  token: string,
+  verificationId: string
+): Promise<{ ok: boolean; message: string }> {
+  const res = await fetch(apiUrl(`/api/v1/admin/verifications/${verificationId}/extract-ec8a`), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    },
+  })
+  const json = (await res.json().catch(() => ({}))) as { message?: string }
+  return {
+    ok: res.ok,
+    message: json.message ?? (res.ok ? "EC8A extraction completed." : "Extraction failed."),
+  }
+}

@@ -8,9 +8,9 @@ import {
   Table, TableBody, TableCell, TableHead,
   TableHeader, TableRow,
 } from "@/components/ui/table"
-import { RefreshCw, ImageIcon, MapPin, ExternalLink } from "lucide-react"
+import { RefreshCw, ImageIcon, MapPin, ExternalLink, ScanLine } from "lucide-react"
 import { apiUrl } from "@/lib/api-base"
-import { fetchSubmissions, SubmissionItem } from "@/lib/submissions"
+import { fetchSubmissions, retryEc8aExtraction, SubmissionItem } from "@/lib/submissions"
 import { VerificationImageModal } from "@/components/verification-image-modal"
 
 interface TenantOption {
@@ -35,6 +35,8 @@ export default function SubmissionsPage() {
   const [tenants, setTenants] = useState<TenantOption[]>([])
   const [imageView, setImageView] = useState<ImageView | null>(null)
   const [loadError, setLoadError] = useState("")
+  const [extractingId, setExtractingId] = useState<string | null>(null)
+  const [extractNotice, setExtractNotice] = useState("")
 
   const token = typeof window !== "undefined" ? localStorage.getItem("vf_token") ?? "" : ""
 
@@ -88,6 +90,21 @@ export default function SubmissionsPage() {
     return withVotes.map((p) => `${p.code}: ${p.votes}`).join(", ")
   }
 
+  const handleRetryEc8a = async (row: SubmissionItem) => {
+    if (!token || extractingId) return
+    setExtractingId(row.id)
+    setExtractNotice("")
+    const result = await retryEc8aExtraction(token, row.id)
+    setExtractingId(null)
+    setExtractNotice(result.message)
+    if (result.ok) {
+      await load()
+    }
+  }
+
+  const hasPrimaryImage = (row: SubmissionItem) =>
+    Boolean(row.has_primary_file || row.image_url)
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -101,6 +118,12 @@ export default function SubmissionsPage() {
           <RefreshCw className="h-4 w-4" /> Refresh
         </Button>
       </div>
+
+      {extractNotice && (
+        <Card className="border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+          {extractNotice}
+        </Card>
+      )}
 
       {loadError && (
         <Card className="border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
@@ -196,6 +219,18 @@ export default function SubmissionsPage() {
                     <div className="text-xs text-muted-foreground max-w-[200px] truncate" title={formatParties(row)}>
                       {formatParties(row)}
                     </div>
+                    {hasPrimaryImage(row) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 mt-2 text-xs gap-1"
+                        disabled={extractingId === row.id}
+                        onClick={() => void handleRetryEc8a(row)}
+                      >
+                        <ScanLine className={`h-3 w-3 ${extractingId === row.id ? "animate-pulse" : ""}`} />
+                        {extractingId === row.id ? "Running OCR…" : "Retry EC8A"}
+                      </Button>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
