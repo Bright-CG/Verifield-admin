@@ -21,7 +21,7 @@ export function verificationMediaUrl(
   return apiUrl(`/api/v1/admin/verifications/${verificationId}/media/${variant}`)
 }
 
-async function loadImageBlob(
+export async function loadImageBlob(
   url: string,
   token?: string
 ): Promise<{ blob: Blob | null; error: string }> {

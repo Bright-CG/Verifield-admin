@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { apiUrl } from "@/lib/api-base"
+import { VerificationCaptureImage } from "@/components/verification-capture-image"
 import { CheckCircle2, Loader2, Save } from "lucide-react"
 
 const PARTY_CODES = [
@@ -63,6 +64,7 @@ export function Ec8aReviewPanel({
   const [saving, setSaving] = useState(false)
   const [approving, setApproving] = useState(false)
   const [message, setMessage] = useState("")
+  const [primaryImageUrl, setPrimaryImageUrl] = useState<string | null>(null)
 
   const ec8a = (extraction?.ec8a_data ?? {}) as Record<string, unknown>
   const canEdit =
@@ -78,6 +80,22 @@ export function Ec8aReviewPanel({
     setStats(nextStats)
     setParties(partyRows(ec8a))
   }, [extraction])
+
+  useEffect(() => {
+    if (!verificationId || !token) return
+    fetch(apiUrl(`/api/v1/verifications/${verificationId}/result-sheet`), {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    })
+      .then((r) => r.json())
+      .then((json) => {
+        const url =
+          json.data?.primary_image_url
+          ?? json.data?.image_url
+          ?? null
+        if (typeof url === "string" && url) setPrimaryImageUrl(url)
+      })
+      .catch(() => {})
+  }, [verificationId, token])
 
   const buildPayload = useCallback(() => {
     const partyPayload = parties
@@ -201,10 +219,19 @@ export function Ec8aReviewPanel({
       </div>
 
       <p className="text-xs text-muted-foreground leading-relaxed">
-        Compare party counters against the immutable captured image. Edit any mismatch, save, then approve.
+        Compare party counters against the captured EC8A image. OCR often misreads handwriting — edit mismatches, save, then approve.
         Only approved results roll up to the EC8A dashboard totals.
       </p>
 
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+        <VerificationCaptureImage
+          verificationId={verificationId}
+          variant="primary"
+          fallbackUrl={primaryImageUrl}
+          title="Primary capture (used for OCR)"
+        />
+
+        <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {STAT_FIELDS.map(({ key, label }) => (
           <div key={key}>
@@ -302,6 +329,8 @@ export function Ec8aReviewPanel({
           <CheckCircle2 className="h-4 w-4" /> Approved — counting in EC8A totals.
         </p>
       )}
+        </div>
+      </div>
     </div>
   )
 }
