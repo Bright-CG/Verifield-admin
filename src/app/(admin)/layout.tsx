@@ -8,6 +8,7 @@ import {
   Menu, X, ClipboardList, BarChart3,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { apiUrl } from "@/lib/api-base"
 
@@ -122,6 +123,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setSidebarOpen(false)
   }, [pathname])
 
+  useEffect(() => {
+    if (!sidebarOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [sidebarOpen])
+
   const badgeLabel = role === "super_admin" ? "SUPER" : tenantId ? "ORG" : "ADMIN"
   const badgeNote =
     role === "super_admin" ? "Platform Operator" : "Organisation Console"
@@ -137,6 +147,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     )?.label ?? "VeriField Admin"
 
   const closeSidebar = () => setSidebarOpen(false)
+  const toggleSidebar = () => setSidebarOpen((open) => !open)
 
   const sidebarContent = (
     <>
@@ -209,14 +220,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Mobile drawer */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
+        <div className="fixed inset-0 z-50 md:hidden" id="admin-mobile-nav">
           <button
             type="button"
             className="absolute inset-0 bg-black/50"
             onClick={closeSidebar}
             aria-label="Close menu overlay"
           />
-          <aside className="relative flex h-full w-[min(85vw,18rem)] flex-col border-r border-border bg-card shadow-xl">
+          <aside className="relative flex h-full w-[min(85vw,18rem)] flex-col border-r border-border bg-card shadow-xl animate-in slide-in-from-left duration-200">
             {sidebarContent}
           </aside>
         </div>
@@ -224,14 +235,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="h-16 flex items-center gap-3 px-4 md:px-8 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-          <button
+          <Button
             type="button"
-            className="md:hidden p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open menu"
+            variant="outline"
+            size="sm"
+            className="md:hidden gap-2 shrink-0"
+            onClick={toggleSidebar}
+            aria-expanded={sidebarOpen}
+            aria-controls="admin-mobile-nav"
+            aria-label={sidebarOpen ? "Close navigation menu" : "Open navigation menu"}
           >
-            <Menu className="h-5 w-5" />
-          </button>
+            {sidebarOpen ? (
+              <>
+                <X className="h-4 w-4" />
+                <span className="text-xs font-medium">Close</span>
+              </>
+            ) : (
+              <>
+                <Menu className="h-4 w-4" />
+                <span className="text-xs font-medium">Menu</span>
+              </>
+            )}
+          </Button>
           <h1 className="text-lg font-semibold truncate">{pageTitle}</h1>
         </header>
 

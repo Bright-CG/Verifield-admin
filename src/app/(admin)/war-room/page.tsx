@@ -13,6 +13,7 @@ import {
 import {
   AlertTriangle, CheckCircle2, Map as MapIcon, RefreshCw,
   SignalHigh, WifiOff, MapPin, Search, Table2, ImageIcon,
+  PanelRightOpen, PanelRightClose,
 } from "lucide-react"
 import { apiUrl, broadcastAuthUrl, getReverbEchoConfig } from "@/lib/api-base"
 import {
@@ -75,6 +76,7 @@ export default function WarRoomPage() {
     title: string
     fallbackUrl?: string | null
   } | null>(null)
+  const [feedPanelOpen, setFeedPanelOpen] = useState(false)
 
   const token = typeof window !== "undefined" ? localStorage.getItem("vf_token") ?? "" : ""
 
@@ -329,8 +331,8 @@ export default function WarRoomPage() {
           Select a tenant above to load the war room.
         </Card>
       ) : tab === "map" ? (
-        <div className="flex-1 flex gap-6 min-h-0">
-          <Card className="flex-1 overflow-hidden border-border bg-background shadow-xl relative rounded-xl min-h-[400px]">
+        <div className="flex-1 flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-0 relative">
+          <Card className="flex-1 overflow-hidden border-border bg-background shadow-xl relative rounded-xl min-h-[min(60vh,400px)] lg:min-h-[400px]">
             {loading ? (
               <div className="h-full flex items-center justify-center text-muted-foreground">
                 Loading units…
@@ -342,12 +344,56 @@ export default function WarRoomPage() {
                 onSelectUnit={(u) => setSelectedUnitId(u.id)}
               />
             )}
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="lg:hidden absolute top-3 right-3 z-[500] gap-2 shadow-md"
+              onClick={() => setFeedPanelOpen((open) => !open)}
+              aria-expanded={feedPanelOpen}
+              aria-label={feedPanelOpen ? "Hide live feed panel" : "Show live feed panel"}
+            >
+              {feedPanelOpen ? (
+                <>
+                  <PanelRightClose className="h-4 w-4" />
+                  Hide feed
+                </>
+              ) : (
+                <>
+                  <PanelRightOpen className="h-4 w-4" />
+                  Live feed
+                </>
+              )}
+            </Button>
           </Card>
-          <div className="w-80 flex flex-col space-y-3 min-h-0 shrink-0">
-            <Card className="flex-1 border-border bg-card p-4 flex flex-col min-h-0">
-              <h3 className="text-sm font-semibold border-b border-border pb-2 mb-3 shrink-0">
-                Live feed
-              </h3>
+          <div
+            className={
+              feedPanelOpen
+                ? "fixed inset-x-0 bottom-0 z-[600] max-h-[55vh] lg:static lg:max-h-none lg:w-80 flex flex-col space-y-3 min-h-0 shrink-0 px-4 pb-4 lg:px-0 lg:pb-0"
+                : "hidden lg:flex lg:w-80 flex-col space-y-3 min-h-0 shrink-0"
+            }
+          >
+            {feedPanelOpen && (
+              <button
+                type="button"
+                className="fixed inset-0 bg-black/40 lg:hidden -z-10"
+                onClick={() => setFeedPanelOpen(false)}
+                aria-label="Close live feed overlay"
+              />
+            )}
+            <Card className="flex-1 border-border bg-card p-4 flex flex-col min-h-0 shadow-xl lg:shadow-none">
+              <div className="flex items-center justify-between border-b border-border pb-2 mb-3 shrink-0">
+                <h3 className="text-sm font-semibold">Live feed</h3>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="lg:hidden h-8 px-2"
+                  onClick={() => setFeedPanelOpen(false)}
+                >
+                  <PanelRightClose className="h-4 w-4" />
+                </Button>
+              </div>
               <div className="flex-1 overflow-auto space-y-2 pr-1">
                 {feed.map((event) => (
                   <div
