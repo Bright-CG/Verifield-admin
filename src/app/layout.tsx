@@ -9,6 +9,10 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 export const metadata: Metadata = {
   title: "VeriField Admin",
   description: "Secure Backend Dashboard",
+  icons: {
+    icon: "/favicon.png",
+    apple: "/verifield-logo.png",
+  },
 };
 
 export default function RootLayout({

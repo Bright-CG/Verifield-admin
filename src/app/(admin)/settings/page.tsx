@@ -19,7 +19,7 @@ interface SystemConfig {
   subscriptions_enabled: boolean
   min_app_version: string
   maintenance_mode: boolean
-  active_ocr_engine: "paddle" | "openai" | "google"
+  active_ocr_engine: "paddle" | "openai" | "google" | "document_ai"
   integrations: {
     map_api_key: string
     storage_access_key: string
@@ -32,6 +32,9 @@ interface SystemConfig {
     openai_api_url: string
     openai_api_model: string
     google_vision_api_key: string
+    document_ai_project_id: string
+    document_ai_processor_id: string
+    document_ai_location: string
     billing_secret: string
     mail_provider: string
     mail_from_address: string
@@ -65,6 +68,9 @@ export default function SettingsPage() {
       openai_api_url: "https://api.openai.com/v1/chat/completions",
       openai_api_model: "gpt-4o-mini",
       google_vision_api_key: "",
+      document_ai_project_id: "",
+      document_ai_processor_id: "",
+      document_ai_location: "us",
       billing_secret: "",
       mail_provider: "",
       mail_from_address: "",
@@ -111,7 +117,7 @@ export default function SettingsPage() {
             const engine = json.data.active_ocr_engine
             const activeOcrEngine =
               engine === "vision" ? "openai"
-              : engine === "openai" || engine === "google" || engine === "paddle" ? engine
+              : engine === "openai" || engine === "google" || engine === "paddle" || engine === "document_ai" ? engine
               : "paddle"
 
             return {
@@ -312,10 +318,11 @@ export default function SettingsPage() {
                   <option value="paddle">PaddleOCR (Local, Free)</option>
                   <option value="openai">OpenAI GPT Vision (Cloud, Paid)</option>
                   <option value="google">Google Cloud Vision (Cloud, Paid)</option>
+                  <option value="document_ai">Google Document AI Form Parser (Cloud, Paid)</option>
                 </select>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Applies globally to all EC8A extractions after field agents sync captures.
-                  Google Cloud Vision is recommended for election-scale volume (~200k images).
+                  Google Vision uses spatial row reconstruction; Document AI understands tables natively (no free tier — pay per page).
                 </p>
               </div>
 
@@ -399,6 +406,52 @@ export default function SettingsPage() {
                     Alternatively, set a service account JSON on the server via{" "}
                     <code className="text-xs">GOOGLE_APPLICATION_CREDENTIALS</code> in{" "}
                     <code className="text-xs">.env</code> (used when no API key is saved here).
+                  </p>
+                </div>
+              )}
+
+              {config.active_ocr_engine === "document_ai" && (
+                <div className="grid gap-4 rounded-lg border border-border p-4 bg-muted/30">
+                  <div className="grid gap-2">
+                    <Label htmlFor="document_ai_project_id">GCP Project ID</Label>
+                    <Input
+                      id="document_ai_project_id"
+                      value={config.integrations.document_ai_project_id}
+                      onChange={e => setConfig({
+                        ...config,
+                        integrations: { ...config.integrations, document_ai_project_id: e.target.value },
+                      })}
+                      placeholder="verifield-election"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="document_ai_processor_id">Form Parser Processor ID</Label>
+                    <Input
+                      id="document_ai_processor_id"
+                      value={config.integrations.document_ai_processor_id}
+                      onChange={e => setConfig({
+                        ...config,
+                        integrations: { ...config.integrations, document_ai_processor_id: e.target.value },
+                      })}
+                      placeholder="abc123def456..."
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="document_ai_location">Processor Location</Label>
+                    <Input
+                      id="document_ai_location"
+                      value={config.integrations.document_ai_location}
+                      onChange={e => setConfig({
+                        ...config,
+                        integrations: { ...config.integrations, document_ai_location: e.target.value },
+                      })}
+                      placeholder="us"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Requires a Document AI <strong>Form Parser</strong> processor and service account on the VPS via{" "}
+                    <code className="text-xs">GOOGLE_APPLICATION_CREDENTIALS</code> (API keys are not supported).
+                    Pricing is per page — there is no ongoing free tier like Vision&apos;s monthly OCR allowance.
                   </p>
                 </div>
               )}
