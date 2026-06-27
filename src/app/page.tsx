@@ -153,9 +153,16 @@ export default function LandingPage() {
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       {/* ─── HEADER ─── */}
       <header className="h-16 flex items-center justify-between px-6 md:px-12 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="text-2xl font-bold tracking-tighter">
-          Veri<span className="text-primary">Field</span>
-        </div>
+        <Link href="/" className="flex items-center gap-3">
+          <img
+            src="/verifield-logo.png?v=2"
+            alt="VeriField"
+            className="h-10 w-10 rounded-lg object-contain"
+          />
+          <span className="text-xl font-bold tracking-tighter hidden sm:inline">
+            Veri<span className="text-primary">Field</span>
+          </span>
+        </Link>
         <nav className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
           <a href="#features" className="hover:text-foreground transition-colors">Features</a>
           <a href="#how-it-works" className="hover:text-foreground transition-colors">How It Works</a>

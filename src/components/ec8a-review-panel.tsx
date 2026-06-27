@@ -21,6 +21,7 @@ const STAT_FIELDS = [
 export interface Ec8aExtractionShape {
   status: string
   review_status?: string
+  provider?: string | null
   ec8a_data?: Record<string, unknown> | null
   error_message?: string | null
 }
@@ -206,6 +207,12 @@ export function Ec8aReviewPanel({
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="text-muted-foreground">OCR status:</span>
         <span className="font-medium">{extraction.status}</span>
+        {extraction.provider && (
+          <>
+            <span className="text-muted-foreground">· Engine:</span>
+            <span className="font-mono text-xs">{extraction.provider}</span>
+          </>
+        )}
         <span className="text-muted-foreground">· Review:</span>
         <span
           className={

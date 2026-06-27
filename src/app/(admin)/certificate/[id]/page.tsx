@@ -35,9 +35,11 @@ interface CertificateData {
   legal_statement?: string
   ec8a_extraction?: {
     status: string
+    provider?: string | null
     review_status?: string
     data: Record<string, unknown> | null
     extracted_at: string | null
+    error_message?: string | null
   } | null
 }
 
@@ -116,6 +118,7 @@ export default function CertificatePage() {
   const [error, setError] = useState("")
   const [extracting, setExtracting] = useState(false)
   const [extractMsg, setExtractMsg] = useState("")
+  const [extractEngine, setExtractEngine] = useState<string>("")
   const [imageView, setImageView] = useState<"primary" | "secondary" | null>(null)
   const [extraction, setExtraction] = useState<Ec8aExtractionShape | null>(null)
   const printRef = useRef<HTMLDivElement>(null)
@@ -178,10 +181,22 @@ export default function CertificatePage() {
     try {
       const res = await fetch(apiUrl(`/api/v1/admin/verifications/${id}/extract-ec8a`), {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(extractEngine ? { engine: extractEngine } : {}),
       })
       const json = await res.json()
-      setExtractMsg(json.message ?? (res.ok ? "Extraction complete." : "Extraction failed."))
+      const provider = json.provider ?? json.data?.provider
+      setExtractMsg(
+        json.message
+          ? `${json.message}${provider ? ` · Engine: ${provider}` : ""}`
+          : res.ok
+            ? `Extraction complete.${provider ? ` Engine: ${provider}` : ""}`
+            : "Extraction failed.",
+      )
       if (res.ok) {
         await loadCertificate()
         await loadResultSheet()
@@ -228,7 +243,19 @@ export default function CertificatePage() {
         >
           <ArrowLeft className="h-4 w-4 mr-2" /> Submissions
         </Link>
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2 items-center">
+          <select
+            value={extractEngine}
+            onChange={(e) => setExtractEngine(e.target.value)}
+            className="h-9 rounded-md border border-input bg-background px-2 text-sm print:hidden"
+            title="OCR engine for this run (empty = system default)"
+          >
+            <option value="">System default</option>
+            <option value="google">Google Vision</option>
+            <option value="document_ai">Document AI Form Parser</option>
+            <option value="paddle">PaddleOCR</option>
+            <option value="openai">OpenAI Vision</option>
+          </select>
           <Button
             variant="outline"
             className="border-border gap-2"
@@ -412,10 +439,16 @@ export default function CertificatePage() {
                 </pre>
                 <p className="text-xs text-muted-foreground mt-2">
                   Status: {data.ec8a_extraction.status}
+                  {data.ec8a_extraction.provider
+                    ? ` · Engine: ${data.ec8a_extraction.provider}`
+                    : ""}
                   {data.ec8a_extraction.extracted_at
                     ? ` · ${formatWhen(data.ec8a_extraction.extracted_at)}`
                     : ""}
                 </p>
+                {data.ec8a_extraction.error_message && (
+                  <p className="text-xs text-destructive mt-1">{data.ec8a_extraction.error_message}</p>
+                )}
               </div>
             </>
           )}

@@ -153,7 +153,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <>
       <div className="h-16 flex items-center gap-2 px-6 border-b border-border shrink-0">
         <img
-          src="/verifield-logo.png"
+          src="/verifield-logo.png?v=2"
           alt="VeriField"
           className="h-8 w-8 rounded-md object-cover shrink-0"
         />

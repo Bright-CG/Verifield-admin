@@ -112,7 +112,7 @@ export default function LoginPage() {
       <header className="h-16 flex items-center justify-between px-8 border-b border-border">
         <Link href="/" className="flex items-center gap-2">
           <img
-            src="/verifield-logo.png"
+            src="/verifield-logo.png?v=2"
             alt="VeriField"
             className="h-9 w-9 rounded-lg object-cover"
           />
@@ -128,7 +128,7 @@ export default function LoginPage() {
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-4">
               <img
-                src="/verifield-logo.png"
+                src="/verifield-logo.png?v=2"
                 alt="VeriField"
                 className="h-16 w-16 rounded-xl object-cover shadow-md"
               />
