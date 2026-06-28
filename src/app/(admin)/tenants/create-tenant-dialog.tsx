@@ -26,7 +26,7 @@ export function CreateTenantDialog({ open, onOpenChange, onSuccess }: CreateTena
     name: "",
     type: "election",
     app_name: "",
-    primary_color: "#6366f1",
+    primary_color: "#0049cc",
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,7 +46,7 @@ export function CreateTenantDialog({ open, onOpenChange, onSuccess }: CreateTena
       if (res.ok) {
         onSuccess()
         onOpenChange(false)
-        setFormData({ name: "", type: "election", app_name: "", primary_color: "#6366f1" })
+        setFormData({ name: "", type: "election", app_name: "", primary_color: "#0049cc" })
       } else {
         const error = await res.json()
         alert(`Error: ${error.message || "Failed to create tenant"}`)

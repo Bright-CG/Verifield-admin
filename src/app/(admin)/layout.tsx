@@ -8,6 +8,7 @@ import {
   Menu, X, ClipboardList, BarChart3,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { BrandMark } from "@/components/brand-mark"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { apiUrl } from "@/lib/api-base"
@@ -152,14 +153,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const sidebarContent = (
     <>
       <div className="h-16 flex items-center gap-2 px-6 border-b border-border shrink-0">
-        <img
-          src="/verifield-logo.png?v=2"
-          alt="VeriField"
-          className="h-8 w-8 rounded-md object-cover shrink-0"
-        />
-        <span className="text-xl font-bold tracking-tighter truncate">
-          Veri<span className="text-primary">Field</span>
-        </span>
+        <BrandMark size="sm" />
         <span className="ml-auto md:ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">
           {mounted ? badgeLabel : "ADMIN"}
         </span>

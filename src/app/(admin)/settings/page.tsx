@@ -11,6 +11,7 @@ import {
   Save, RefreshCw, AlertCircle, ImageIcon
 } from "lucide-react"
 import { apiUrl } from "@/lib/api-base"
+import { DEFAULT_BRAND_COLOR } from "@/lib/brand-color"
 
 interface SystemConfig {
   app_name: string
@@ -50,7 +51,7 @@ interface SystemConfig {
 export default function SettingsPage() {
   const [config, setConfig] = useState<SystemConfig>({
     app_name: "VeriField",
-    primary_color: "#3b82f6",
+    primary_color: DEFAULT_BRAND_COLOR,
     logo_url: "",
     subscriptions_enabled: true,
     min_app_version: "1.0.0",
@@ -84,6 +85,7 @@ export default function SettingsPage() {
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
   const [error, setError] = useState("")
 
   const token = typeof window !== "undefined" ? localStorage.getItem("vf_token") : ""
@@ -150,11 +152,54 @@ export default function SettingsPage() {
         body: JSON.stringify(config),
       })
       if (!res.ok) throw new Error("Save failed")
+      window.dispatchEvent(new Event("vf-brand-updated"))
       alert("Settings updated successfully!")
     } catch {
       setError("Failed to save settings. Are you a Super Admin?")
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingLogo(true)
+    setError("")
+    try {
+      const body = new FormData()
+      body.append("logo", file)
+      const res = await fetch(apiUrl("/api/v1/admin/branding/logo"), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+        body,
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.message || "Upload failed")
+      const url = json.data?.url as string
+      if (url) {
+        const nextConfig = { ...config, logo_url: url }
+        setConfig(nextConfig)
+        const saveRes = await fetch(apiUrl("/api/v1/admin/config"), {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(nextConfig),
+        })
+        if (!saveRes.ok) throw new Error("Logo uploaded but failed to save settings.")
+        window.dispatchEvent(new Event("vf-brand-updated"))
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Logo upload failed.")
+    } finally {
+      setUploadingLogo(false)
+      e.target.value = ""
     }
   }
 
@@ -203,21 +248,39 @@ export default function SettingsPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="logo_url">Logo URL (PNG/SVG)</Label>
-                <div className="flex gap-2">
+                <Label htmlFor="logo_url">Logo</Label>
+                <div className="flex flex-col sm:flex-row gap-3">
                   <Input
                     id="logo_url"
                     value={config.logo_url}
                     onChange={e => setConfig({ ...config, logo_url: e.target.value })}
-                    placeholder="https://..."
+                    placeholder="https://... or upload below"
+                    className="flex-1"
                   />
-                  <div className="w-10 h-10 border border-border rounded bg-muted flex items-center justify-center overflow-hidden">
+                  <div className="w-12 h-12 border border-border rounded bg-muted flex items-center justify-center overflow-hidden shrink-0">
                     {config.logo_url ? (
-                      <img src={config.logo_url} alt="Logo" className="max-w-full max-h-full" />
+                      <img src={config.logo_url} alt="Logo preview" className="max-w-full max-h-full object-contain" />
                     ) : (
                       <ImageIcon className="w-5 h-5 text-muted-foreground" />
                     )}
                   </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" variant="outline" size="sm" disabled={uploadingLogo} asChild>
+                    <label className="cursor-pointer">
+                      {uploadingLogo ? "Uploading…" : "Upload logo file"}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                        className="sr-only"
+                        onChange={handleLogoUpload}
+                        disabled={uploadingLogo}
+                      />
+                    </label>
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    PNG, JPG, WebP, or SVG — stored on server (survives deploy). Also used as favicon.
+                  </span>
                 </div>
               </div>
 

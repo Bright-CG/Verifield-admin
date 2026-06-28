@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { ThemeProvider as NextThemesProvider } from "next-themes"
+import { BrandProvider } from "@/components/brand-provider"
 
 /** Client-only wrapper so next-themes can inject its script outside SSR/hydration issues. */
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -12,7 +13,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       enableSystem
       disableTransitionOnChange
     >
-      {children}
+      <BrandProvider>{children}</BrandProvider>
     </NextThemesProvider>
   )
 }
