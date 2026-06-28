@@ -55,8 +55,8 @@ function SidebarNav({
             : pathname === item.href || pathname.startsWith(item.href + "/")
 
         if (item.superOnly && role !== "super_admin") return null
-        if (item.tenantScoped && role === "super_admin") return null
-        if (item.tenantScoped && !tenantId) return null
+        if (item.tenantScoped && role === "super_admin" && item.href !== "/ec8a" && item.href !== "/submissions") return null
+        if (item.tenantScoped && role !== "super_admin" && !tenantId) return null
 
         return (
           <Link

@@ -41,7 +41,7 @@ export interface Ec8aDashboard {
 export async function fetchEc8aDashboard(
   token: string,
   tenantId?: string
-): Promise<Ec8aDashboard | null> {
+): Promise<{ data: Ec8aDashboard | null; error?: string }> {
   const qs = tenantId ? `?tenant_id=${encodeURIComponent(tenantId)}` : ""
   const res = await fetch(apiUrl(`/api/v1/admin/ec8a${qs}`), {
     headers: {
@@ -49,7 +49,14 @@ export async function fetchEc8aDashboard(
       Accept: "application/json",
     },
   })
-  if (!res.ok) return null
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}))
+    const body = json as { message?: string; exception?: string }
+    return {
+      data: null,
+      error: body.message ?? body.exception ?? `EC8A API error (${res.status})`,
+    }
+  }
   const json = await res.json()
-  return json.data as Ec8aDashboard
+  return { data: json.data as Ec8aDashboard }
 }

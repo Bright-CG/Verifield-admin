@@ -34,6 +34,7 @@ function partySummary(row: Ec8aRow): string {
 export default function Ec8aPage() {
   const [data, setData] = useState<Ec8aDashboard | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState("")
   const [role, setRole] = useState("")
   const [tenantId, setTenantId] = useState("")
   const [tenants, setTenants] = useState<TenantOption[]>([])
@@ -42,8 +43,10 @@ export default function Ec8aPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const payload = await fetchEc8aDashboard(token, tenantId || undefined)
-    setData(payload)
+    setLoadError("")
+    const result = await fetchEc8aDashboard(token, tenantId || undefined)
+    setData(result.data)
+    if (result.error) setLoadError(result.error)
     setLoading(false)
   }, [token, tenantId])
 
@@ -84,7 +87,7 @@ export default function Ec8aPage() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">EC8A Results</h2>
           <p className="text-muted-foreground mt-1">
-            Accumulated totals use one approved EC8A per polling unit (latest review wins). Agents may submit multiple times; superseded rows do not count.
+            All completed extractions appear below. Totals include only the latest approved sheet per polling unit; approving a newer submission for the same unit replaces that unit&apos;s contribution.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => void load()} className="gap-2">
@@ -108,15 +111,23 @@ export default function Ec8aPage() {
         </Card>
       )}
 
+      {loadError && (
+        <Card className="border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+          {loadError}
+        </Card>
+      )}
+
       {loading ? (
         <Card className="border-border p-8 text-center text-muted-foreground animate-pulse">
           Loading EC8A roll-up…
         </Card>
+      ) : role === "super_admin" && !tenantId ? (
+        <Card className="border-border p-8 text-center text-muted-foreground">
+          Select an organisation to view EC8A totals.
+        </Card>
       ) : !data ? (
         <Card className="border-border p-8 text-center text-muted-foreground">
-          {role === "super_admin" && !tenantId
-            ? "Select an organisation to view EC8A totals."
-            : "No EC8A extractions yet. Run Extract EC8A on a certificate or enable auto-extract."}
+          Could not load EC8A data. Check your connection and try Refresh.
         </Card>
       ) : (
         <>
@@ -131,7 +142,9 @@ export default function Ec8aPage() {
             </div>
 
             {partyEntries.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No party vote totals yet.</p>
+              <p className="text-sm text-muted-foreground">
+                No approved totals yet — approve extractions in the list below (or on each certificate) to roll up party votes.
+              </p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {partyEntries.map(([code, total]) => (
@@ -174,7 +187,7 @@ export default function Ec8aPage() {
                 {data.extractions.length === 0 ? (
                   <TableRow className="border-border">
                     <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                      No extractions recorded.
+                      No EC8A extractions yet. Run Extract EC8A on a certificate or use Retry EC8A on Submissions.
                     </TableCell>
                   </TableRow>
                 ) : (
