@@ -227,7 +227,7 @@ export function Ec8aReviewPanel({
 
       <p className="text-xs text-muted-foreground leading-relaxed">
         Compare party counters against the captured EC8A image. OCR often misreads handwriting — edit mismatches, save, then approve.
-        Only approved results roll up to the EC8A dashboard totals.
+        Only approved results roll up to the EC8A dashboard — one counted sheet per polling unit (latest approval wins if an agent submits again).
       </p>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">

@@ -84,7 +84,7 @@ export default function Ec8aPage() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">EC8A Results</h2>
           <p className="text-muted-foreground mt-1">
-            Accumulated party totals use one latest EC8A per agent. All extractions are listed below.
+            Accumulated totals use one approved EC8A per polling unit (latest review wins). Agents may submit multiple times; superseded rows do not count.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => void load()} className="gap-2">
@@ -125,7 +125,7 @@ export default function Ec8aPage() {
               <BarChart3 className="h-5 w-5 text-primary" />
               <h3 className="text-lg font-semibold">Accumulated totals</h3>
               <span className="text-xs text-muted-foreground ml-auto">
-                {data.agents_in_totals} agent{data.agents_in_totals === 1 ? "" : "s"} counted ·{" "}
+                {(data.units_in_totals ?? data.agents_in_totals)} polling unit{(data.units_in_totals ?? data.agents_in_totals) === 1 ? "" : "s"} counted ·{" "}
                 {data.extractions_total} extraction{data.extractions_total === 1 ? "" : "s"} on file
               </span>
             </div>
@@ -191,8 +191,10 @@ export default function Ec8aPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {row.counts_in_total ? (
-                          <span className="text-emerald-600 text-xs font-medium">Yes (latest for agent)</span>
+                        {row.review_status !== "approved" ? (
+                          <span className="text-amber-600 text-xs font-medium">Pending review</span>
+                        ) : row.counts_in_total ? (
+                          <span className="text-emerald-600 text-xs font-medium">Yes (latest for unit)</span>
                         ) : (
                           <span className="text-muted-foreground text-xs">No (superseded)</span>
                         )}

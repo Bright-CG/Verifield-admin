@@ -4,8 +4,11 @@ export interface Ec8aRow {
   extraction_id: string
   verification_id: string
   status: string
+  review_status?: string
   extracted_at: string | null
+  reviewed_at?: string | null
   counts_in_total: boolean
+  unit_id?: string | null
   agent_id: string | null
   agent_name: string | null
   unit_name: string | null
@@ -29,6 +32,7 @@ export interface Ec8aRow {
 export interface Ec8aDashboard {
   party_totals: Record<string, number>
   stat_totals: Record<string, number>
+  units_in_totals?: number
   agents_in_totals: number
   extractions_total: number
   extractions: Ec8aRow[]
