@@ -266,18 +266,20 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button type="button" variant="outline" size="sm" disabled={uploadingLogo} asChild>
-                    <label className="cursor-pointer">
-                      {uploadingLogo ? "Uploading…" : "Upload logo file"}
-                      <input
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                        className="sr-only"
-                        onChange={handleLogoUpload}
-                        disabled={uploadingLogo}
-                      />
-                    </label>
-                  </Button>
+                  <label
+                    className={`inline-flex h-7 items-center justify-center rounded-[min(var(--radius-md),12px)] border border-border bg-background px-2.5 text-[0.8rem] font-medium whitespace-nowrap transition-all hover:bg-muted hover:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 ${
+                      uploadingLogo ? "pointer-events-none opacity-50" : "cursor-pointer"
+                    }`}
+                  >
+                    {uploadingLogo ? "Uploading…" : "Upload logo file"}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                      className="sr-only"
+                      onChange={handleLogoUpload}
+                      disabled={uploadingLogo}
+                    />
+                  </label>
                   <span className="text-xs text-muted-foreground">
                     PNG, JPG, WebP, or SVG — stored on server (survives deploy). Also used as favicon.
                   </span>

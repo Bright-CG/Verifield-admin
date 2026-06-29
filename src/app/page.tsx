@@ -422,10 +422,13 @@ export default function LandingPage() {
           <div className="text-xl font-bold tracking-tighter">
             Veri<span className="text-primary">Field</span>
           </div>
-          <div className="flex gap-6 text-sm text-muted-foreground">
+          <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
             <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
             <a href="#transparency" className="hover:text-foreground transition-colors">Transparency</a>
+            <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
+            <Link href="/support" className="hover:text-foreground transition-colors">Support</Link>
             <Link href="/login" className="hover:text-foreground transition-colors">Sign In</Link>
           </div>
           <p className="text-xs text-muted-foreground">
