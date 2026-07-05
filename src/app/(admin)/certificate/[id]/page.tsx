@@ -251,10 +251,14 @@ export default function CertificatePage() {
             title="OCR engine for this run (empty = system default)"
           >
             <option value="">System default</option>
-            <option value="google">Google Vision</option>
-            <option value="document_ai">Document AI Form Parser</option>
             <option value="paddle">PaddleOCR</option>
-            <option value="openai">OpenAI Vision</option>
+            <option value="google">Google Vision</option>
+            <option value="document_ai">Document AI</option>
+            <option value="qwen">Qwen2.5-VL</option>
+            <option value="florence">Florence-2</option>
+            <option value="openai">OpenAI GPT Vision</option>
+            <option value="gemini">Gemini 2.5 Pro</option>
+            <option value="ensemble">Ensemble Mode</option>
           </select>
           <Button
             variant="outline"

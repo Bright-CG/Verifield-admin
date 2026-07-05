@@ -20,7 +20,7 @@ interface SystemConfig {
   subscriptions_enabled: boolean
   min_app_version: string
   maintenance_mode: boolean
-  active_ocr_engine: "paddle" | "openai" | "google" | "document_ai"
+  active_ocr_engine: "paddle" | "openai" | "google" | "document_ai" | "qwen" | "florence" | "gemini" | "ensemble"
   integrations: {
     map_api_key: string
     storage_access_key: string
@@ -36,6 +36,11 @@ interface SystemConfig {
     document_ai_project_id: string
     document_ai_processor_id: string
     document_ai_location: string
+    qwen_endpoint: string
+    florence_endpoint: string
+    gemini_api_key: string
+    gemini_endpoint: string
+    gemini_model: string
     billing_secret: string
     mail_provider: string
     mail_from_address: string
@@ -72,6 +77,11 @@ export default function SettingsPage() {
       document_ai_project_id: "",
       document_ai_processor_id: "",
       document_ai_location: "us",
+      qwen_endpoint: "http://127.0.0.1:8110",
+      florence_endpoint: "http://127.0.0.1:8111",
+      gemini_api_key: "",
+      gemini_endpoint: "https://generativelanguage.googleapis.com/v1beta",
+      gemini_model: "gemini-2.5-pro",
       billing_secret: "",
       mail_provider: "",
       mail_from_address: "",
@@ -119,8 +129,8 @@ export default function SettingsPage() {
             const engine = json.data.active_ocr_engine
             const activeOcrEngine =
               engine === "vision" ? "openai"
-              : engine === "openai" || engine === "google" || engine === "paddle" || engine === "document_ai" ? engine
-              : "paddle"
+              : ["paddle", "openai", "google", "document_ai", "qwen", "florence", "gemini", "ensemble"].includes(engine) ? engine
+              : "google"
 
             return {
               ...prev,
@@ -362,15 +372,15 @@ export default function SettingsPage() {
             </div>
           </Card>
 
-          {/* Server OCR Engine (Super Admin global toggle) */}
+          {/* AI Extraction Engine (Super Admin global toggle) */}
           <Card className="p-6 border-border space-y-6">
             <div className="flex items-center gap-2 font-semibold text-lg border-b border-border pb-4">
               <Settings className="w-5 h-5 text-primary" />
-              Server OCR Engine
+              AI Extraction Engine
             </div>
             <div className="grid gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="active_ocr_engine">Active Server OCR Engine</Label>
+                <Label htmlFor="active_ocr_engine">Active AI Extraction Engine</Label>
                 <select
                   id="active_ocr_engine"
                   value={config.active_ocr_engine}
@@ -380,14 +390,18 @@ export default function SettingsPage() {
                   })}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <option value="paddle">PaddleOCR (Local, Free)</option>
-                  <option value="openai">OpenAI GPT Vision (Cloud, Paid)</option>
-                  <option value="google">Google Cloud Vision (Cloud, Paid)</option>
-                  <option value="document_ai">Google Document AI Form Parser (Cloud, Paid)</option>
+                  <option value="paddle">PaddleOCR</option>
+                  <option value="google">Google Vision</option>
+                  <option value="document_ai">Google Document AI</option>
+                  <option value="qwen">Qwen2.5-VL</option>
+                  <option value="florence">Florence-2</option>
+                  <option value="openai">OpenAI GPT Vision</option>
+                  <option value="gemini">Gemini 2.5 Pro</option>
+                  <option value="ensemble">Ensemble Mode</option>
                 </select>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Applies globally to all EC8A extractions after field agents sync captures.
-                  Google Vision uses spatial row reconstruction; Document AI understands tables natively (no free tier — pay per page).
+                  Applies globally to all EC8A extractions. Ensemble Mode runs Qwen2.5-VL and Florence-2 in parallel —
+                  identical fields are VERIFIED; any mismatch returns NEEDS_REVIEW (no guessing).
                 </p>
               </div>
 
@@ -515,9 +529,97 @@ export default function SettingsPage() {
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     Requires a Document AI <strong>Form Parser</strong> processor and service account on the VPS via{" "}
-                    <code className="text-xs">GOOGLE_APPLICATION_CREDENTIALS</code> (API keys are not supported).
-                    Pricing is per page — there is no ongoing free tier like Vision&apos;s monthly OCR allowance.
+                    <code className="text-xs">GOOGLE_APPLICATION_CREDENTIALS</code>.
                   </p>
+                </div>
+              )}
+
+              {config.active_ocr_engine === "qwen" && (
+                <div className="grid gap-2 rounded-lg border border-border p-4 bg-muted/30">
+                  <Label htmlFor="qwen_endpoint">Qwen2.5-VL Service URL</Label>
+                  <Input
+                    id="qwen_endpoint"
+                    value={config.integrations.qwen_endpoint}
+                    onChange={e => setConfig({
+                      ...config,
+                      integrations: { ...config.integrations, qwen_endpoint: e.target.value },
+                    })}
+                    placeholder="http://127.0.0.1:8110"
+                  />
+                </div>
+              )}
+
+              {config.active_ocr_engine === "florence" && (
+                <div className="grid gap-2 rounded-lg border border-border p-4 bg-muted/30">
+                  <Label htmlFor="florence_endpoint">Florence-2 Service URL</Label>
+                  <Input
+                    id="florence_endpoint"
+                    value={config.integrations.florence_endpoint}
+                    onChange={e => setConfig({
+                      ...config,
+                      integrations: { ...config.integrations, florence_endpoint: e.target.value },
+                    })}
+                    placeholder="http://127.0.0.1:8111"
+                  />
+                </div>
+              )}
+
+              {config.active_ocr_engine === "ensemble" && (
+                <div className="grid gap-4 rounded-lg border border-border p-4 bg-muted/30">
+                  <div className="grid gap-2">
+                    <Label htmlFor="qwen_endpoint_ensemble">Qwen2.5-VL Service URL</Label>
+                    <Input
+                      id="qwen_endpoint_ensemble"
+                      value={config.integrations.qwen_endpoint}
+                      onChange={e => setConfig({
+                        ...config,
+                        integrations: { ...config.integrations, qwen_endpoint: e.target.value },
+                      })}
+                      placeholder="http://127.0.0.1:8110"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="florence_endpoint_ensemble">Florence-2 Service URL</Label>
+                    <Input
+                      id="florence_endpoint_ensemble"
+                      value={config.integrations.florence_endpoint}
+                      onChange={e => setConfig({
+                        ...config,
+                        integrations: { ...config.integrations, florence_endpoint: e.target.value },
+                      })}
+                      placeholder="http://127.0.0.1:8111"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {config.active_ocr_engine === "gemini" && (
+                <div className="grid gap-4 rounded-lg border border-border p-4 bg-muted/30">
+                  <div className="grid gap-2">
+                    <Label htmlFor="gemini_api_key">Gemini API Key</Label>
+                    <Input
+                      id="gemini_api_key"
+                      type="password"
+                      value={config.integrations.gemini_api_key}
+                      onChange={e => setConfig({
+                        ...config,
+                        integrations: { ...config.integrations, gemini_api_key: e.target.value },
+                      })}
+                      placeholder="AIza..."
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="gemini_model">Gemini Model</Label>
+                    <Input
+                      id="gemini_model"
+                      value={config.integrations.gemini_model}
+                      onChange={e => setConfig({
+                        ...config,
+                        integrations: { ...config.integrations, gemini_model: e.target.value },
+                      })}
+                      placeholder="gemini-2.5-pro"
+                    />
+                  </div>
                 </div>
               )}
             </div>
