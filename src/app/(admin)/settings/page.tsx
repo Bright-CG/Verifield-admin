@@ -29,7 +29,14 @@ interface SystemConfig {
     devicecheck_key: string
     reverb_app_key: string
     paddle_ocr_url: string
+    openai_enabled: boolean
     openai_api_key: string
+    openai_endpoint: string
+    openai_model: string
+    openai_prompt: string
+    openai_timeout: number
+    openai_max_retries: number
+    openai_temperature: number
     openai_api_url: string
     openai_api_model: string
     google_vision_api_key: string
@@ -38,9 +45,14 @@ interface SystemConfig {
     document_ai_location: string
     qwen_endpoint: string
     florence_endpoint: string
+    gemini_enabled: boolean
     gemini_api_key: string
     gemini_endpoint: string
     gemini_model: string
+    gemini_prompt: string
+    gemini_timeout: number
+    gemini_max_retries: number
+    gemini_temperature: number
     billing_secret: string
     mail_provider: string
     mail_from_address: string
@@ -70,18 +82,30 @@ export default function SettingsPage() {
       devicecheck_key: "",
       reverb_app_key: "",
       paddle_ocr_url: "http://127.0.0.1:8107",
+      openai_enabled: true,
       openai_api_key: "",
-      openai_api_url: "https://api.openai.com/v1/chat/completions",
-      openai_api_model: "gpt-4o-mini",
+      openai_endpoint: "https://api.openai.com/v1/responses",
+      openai_model: "",
+      openai_prompt: "",
+      openai_timeout: 180,
+      openai_max_retries: 2,
+      openai_temperature: 0.1,
+      openai_api_url: "https://api.openai.com/v1/responses",
+      openai_api_model: "",
       google_vision_api_key: "",
       document_ai_project_id: "",
       document_ai_processor_id: "",
       document_ai_location: "us",
       qwen_endpoint: "http://127.0.0.1:8110",
       florence_endpoint: "http://127.0.0.1:8111",
+      gemini_enabled: true,
       gemini_api_key: "",
       gemini_endpoint: "https://generativelanguage.googleapis.com/v1beta",
-      gemini_model: "gemini-2.5-pro",
+      gemini_model: "",
+      gemini_prompt: "",
+      gemini_timeout: 180,
+      gemini_max_retries: 2,
+      gemini_temperature: 0.1,
       billing_secret: "",
       mail_provider: "",
       mail_from_address: "",
@@ -96,6 +120,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [defaultEc8aPrompt, setDefaultEc8aPrompt] = useState("")
   const [error, setError] = useState("")
 
   const token = typeof window !== "undefined" ? localStorage.getItem("vf_token") : ""
@@ -125,6 +150,30 @@ export default function SettingsPage() {
             }
             if (!integrations.openai_api_model && legacy.vision_api_model) {
               integrations.openai_api_model = legacy.vision_api_model
+            }
+            if (!integrations.openai_model && integrations.openai_api_model) {
+              integrations.openai_model = integrations.openai_api_model
+            }
+            if (!integrations.openai_endpoint && integrations.openai_api_url) {
+              integrations.openai_endpoint = integrations.openai_api_url
+            }
+            if (integrations.openai_endpoint?.includes("chat/completions")) {
+              integrations.openai_endpoint = "https://api.openai.com/v1/responses"
+            }
+            if (!integrations.openai_prompt) {
+              integrations.openai_prompt = ""
+            }
+            if (!integrations.gemini_prompt) {
+              integrations.gemini_prompt = ""
+            }
+            if (integrations.openai_enabled === undefined) {
+              integrations.openai_enabled = true
+            }
+            if (integrations.gemini_enabled === undefined) {
+              integrations.gemini_enabled = true
+            }
+            if (json.data.default_ec8a_prompt) {
+              setDefaultEc8aPrompt(json.data.default_ec8a_prompt as string)
             }
             const engine = json.data.active_ocr_engine
             const activeOcrEngine =
@@ -395,8 +444,8 @@ export default function SettingsPage() {
                   <option value="document_ai">Google Document AI</option>
                   <option value="qwen">Qwen2.5-VL</option>
                   <option value="florence">Florence-2</option>
-                  <option value="openai">OpenAI GPT Vision</option>
-                  <option value="gemini">Gemini 2.5 Pro</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="gemini">Gemini</option>
                   <option value="ensemble">Ensemble Mode</option>
                 </select>
                 <p className="text-xs text-muted-foreground leading-relaxed">
@@ -420,49 +469,6 @@ export default function SettingsPage() {
                   <p className="text-xs text-muted-foreground">
                     Requires the Python microservice running on this VPS (PM2 process{" "}
                     <code className="text-xs">verifield-ocr</code> on port 8107).
-                  </p>
-                </div>
-              )}
-
-              {config.active_ocr_engine === "openai" && (
-                <div className="grid gap-4 rounded-lg border border-border p-4 bg-muted/30">
-                  <div className="grid gap-2">
-                    <Label htmlFor="openai_api_key">OpenAI API Key</Label>
-                    <Input
-                      id="openai_api_key"
-                      type="password"
-                      placeholder="sk-..."
-                      value={config.integrations.openai_api_key}
-                      onChange={e => setConfig({
-                        ...config,
-                        integrations: { ...config.integrations, openai_api_key: e.target.value },
-                      })}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="openai_api_url">OpenAI API URL</Label>
-                    <Input
-                      id="openai_api_url"
-                      value={config.integrations.openai_api_url}
-                      onChange={e => setConfig({
-                        ...config,
-                        integrations: { ...config.integrations, openai_api_url: e.target.value },
-                      })}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="openai_api_model">OpenAI Model</Label>
-                    <Input
-                      id="openai_api_model"
-                      value={config.integrations.openai_api_model}
-                      onChange={e => setConfig({
-                        ...config,
-                        integrations: { ...config.integrations, openai_api_model: e.target.value },
-                      })}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Uses GPT vision to return structured EC8A JSON directly. Higher cost at scale than Google Vision.
                   </p>
                 </div>
               )}
@@ -593,35 +599,261 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {config.active_ocr_engine === "gemini" && (
-                <div className="grid gap-4 rounded-lg border border-border p-4 bg-muted/30">
+              )}
+
+              <div className="grid gap-4 rounded-lg border border-border p-4 bg-muted/30">
+                <div className="font-medium text-sm">OpenAI Configuration</div>
+                <p className="text-xs text-muted-foreground -mt-2">
+                  Provider: OpenAI · Uses the Responses API with multimodal image input. Model and prompt are loaded dynamically.
+                </p>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="openai_enabled">Enable OpenAI</Label>
+                  <Switch
+                    id="openai_enabled"
+                    checked={config.integrations.openai_enabled}
+                    onCheckedChange={v => setConfig({
+                      ...config,
+                      integrations: { ...config.integrations, openai_enabled: v },
+                    })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="openai_api_key">OpenAI API Key</Label>
+                  <Input
+                    id="openai_api_key"
+                    type="password"
+                    placeholder="sk-..."
+                    value={config.integrations.openai_api_key}
+                    onChange={e => setConfig({
+                      ...config,
+                      integrations: { ...config.integrations, openai_api_key: e.target.value },
+                    })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="openai_endpoint">OpenAI API Endpoint</Label>
+                  <Input
+                    id="openai_endpoint"
+                    value={config.integrations.openai_endpoint}
+                    onChange={e => setConfig({
+                      ...config,
+                      integrations: { ...config.integrations, openai_endpoint: e.target.value },
+                    })}
+                    placeholder="https://api.openai.com/v1/responses"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="openai_model">OpenAI Model</Label>
+                  <Input
+                    id="openai_model"
+                    value={config.integrations.openai_model}
+                    onChange={e => setConfig({
+                      ...config,
+                      integrations: { ...config.integrations, openai_model: e.target.value },
+                    })}
+                    placeholder="gpt-5.5"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="openai_prompt">Extraction Prompt</Label>
+                  <textarea
+                    id="openai_prompt"
+                    rows={8}
+                    className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring font-mono"
+                    value={config.integrations.openai_prompt}
+                    onChange={e => setConfig({
+                      ...config,
+                      integrations: { ...config.integrations, openai_prompt: e.target.value },
+                    })}
+                    placeholder="Leave empty to use the default EC8A prompt ({party_codes} is substituted at runtime)"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Leave prompt empty to use the server default.{" "}
+                    <button
+                      type="button"
+                      className="underline text-primary"
+                      onClick={() => setConfig({
+                        ...config,
+                        integrations: { ...config.integrations, openai_prompt: defaultEc8aPrompt },
+                      })}
+                    >
+                      Load default EC8A prompt
+                    </button>
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="gemini_api_key">Gemini API Key</Label>
+                    <Label htmlFor="openai_timeout">Timeout (seconds)</Label>
                     <Input
-                      id="gemini_api_key"
-                      type="password"
-                      value={config.integrations.gemini_api_key}
+                      id="openai_timeout"
+                      type="number"
+                      min={30}
+                      max={900}
+                      value={config.integrations.openai_timeout}
                       onChange={e => setConfig({
                         ...config,
-                        integrations: { ...config.integrations, gemini_api_key: e.target.value },
+                        integrations: { ...config.integrations, openai_timeout: Number(e.target.value) },
                       })}
-                      placeholder="AIza..."
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="gemini_model">Gemini Model</Label>
+                    <Label htmlFor="openai_max_retries">Maximum Retries</Label>
                     <Input
-                      id="gemini_model"
-                      value={config.integrations.gemini_model}
+                      id="openai_max_retries"
+                      type="number"
+                      min={0}
+                      max={5}
+                      value={config.integrations.openai_max_retries}
                       onChange={e => setConfig({
                         ...config,
-                        integrations: { ...config.integrations, gemini_model: e.target.value },
+                        integrations: { ...config.integrations, openai_max_retries: Number(e.target.value) },
                       })}
-                      placeholder="gemini-2.5-pro"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="openai_temperature">Temperature</Label>
+                    <Input
+                      id="openai_temperature"
+                      type="number"
+                      min={0}
+                      max={2}
+                      step={0.1}
+                      value={config.integrations.openai_temperature}
+                      onChange={e => setConfig({
+                        ...config,
+                        integrations: { ...config.integrations, openai_temperature: Number(e.target.value) },
+                      })}
                     />
                   </div>
                 </div>
-              )}
+              </div>
+
+              <div className="grid gap-4 rounded-lg border border-border p-4 bg-muted/30">
+                <div className="font-medium text-sm">Gemini Configuration</div>
+                <p className="text-xs text-muted-foreground -mt-2">
+                  Provider: Gemini · Model and prompt are loaded dynamically from Admin Settings.
+                </p>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="gemini_enabled">Enable Gemini</Label>
+                  <Switch
+                    id="gemini_enabled"
+                    checked={config.integrations.gemini_enabled}
+                    onCheckedChange={v => setConfig({
+                      ...config,
+                      integrations: { ...config.integrations, gemini_enabled: v },
+                    })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="gemini_api_key">Gemini API Key</Label>
+                  <Input
+                    id="gemini_api_key"
+                    type="password"
+                    value={config.integrations.gemini_api_key}
+                    onChange={e => setConfig({
+                      ...config,
+                      integrations: { ...config.integrations, gemini_api_key: e.target.value },
+                    })}
+                    placeholder="AIza..."
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="gemini_endpoint">Gemini API Endpoint</Label>
+                  <Input
+                    id="gemini_endpoint"
+                    value={config.integrations.gemini_endpoint}
+                    onChange={e => setConfig({
+                      ...config,
+                      integrations: { ...config.integrations, gemini_endpoint: e.target.value },
+                    })}
+                    placeholder="https://generativelanguage.googleapis.com/v1beta"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="gemini_model">Gemini Model</Label>
+                  <Input
+                    id="gemini_model"
+                    value={config.integrations.gemini_model}
+                    onChange={e => setConfig({
+                      ...config,
+                      integrations: { ...config.integrations, gemini_model: e.target.value },
+                    })}
+                    placeholder="gemini-2.5-pro"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="gemini_prompt">Extraction Prompt</Label>
+                  <textarea
+                    id="gemini_prompt"
+                    rows={8}
+                    className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring font-mono"
+                    value={config.integrations.gemini_prompt}
+                    onChange={e => setConfig({
+                      ...config,
+                      integrations: { ...config.integrations, gemini_prompt: e.target.value },
+                    })}
+                    placeholder="Leave empty to use the default EC8A prompt ({party_codes} is substituted at runtime)"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Leave prompt empty to use the server default.{" "}
+                    <button
+                      type="button"
+                      className="underline text-primary"
+                      onClick={() => setConfig({
+                        ...config,
+                        integrations: { ...config.integrations, gemini_prompt: defaultEc8aPrompt },
+                      })}
+                    >
+                      Load default EC8A prompt
+                    </button>
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="gemini_timeout">Timeout (seconds)</Label>
+                    <Input
+                      id="gemini_timeout"
+                      type="number"
+                      min={30}
+                      max={900}
+                      value={config.integrations.gemini_timeout}
+                      onChange={e => setConfig({
+                        ...config,
+                        integrations: { ...config.integrations, gemini_timeout: Number(e.target.value) },
+                      })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="gemini_max_retries">Maximum Retries</Label>
+                    <Input
+                      id="gemini_max_retries"
+                      type="number"
+                      min={0}
+                      max={5}
+                      value={config.integrations.gemini_max_retries}
+                      onChange={e => setConfig({
+                        ...config,
+                        integrations: { ...config.integrations, gemini_max_retries: Number(e.target.value) },
+                      })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="gemini_temperature">Temperature</Label>
+                    <Input
+                      id="gemini_temperature"
+                      type="number"
+                      min={0}
+                      max={2}
+                      step={0.1}
+                      value={config.integrations.gemini_temperature}
+                      onChange={e => setConfig({
+                        ...config,
+                        integrations: { ...config.integrations, gemini_temperature: Number(e.target.value) },
+                      })}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </Card>
 

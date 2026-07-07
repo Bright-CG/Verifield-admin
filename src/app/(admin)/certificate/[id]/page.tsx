@@ -256,8 +256,8 @@ export default function CertificatePage() {
             <option value="document_ai">Document AI</option>
             <option value="qwen">Qwen2.5-VL</option>
             <option value="florence">Florence-2</option>
-            <option value="openai">OpenAI GPT Vision</option>
-            <option value="gemini">Gemini 2.5 Pro</option>
+            <option value="openai">OpenAI</option>
+            <option value="gemini">Gemini</option>
             <option value="ensemble">Ensemble Mode</option>
           </select>
           <Button

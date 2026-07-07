@@ -10,6 +10,7 @@ import { apiUrl } from "@/lib/api-base"
 interface BenchmarkRow {
   engine: string
   engine_slug: string
+  model?: string | null
   processing_time: number
   confidence: string
   result: Record<string, unknown>
@@ -106,6 +107,7 @@ export default function AiBenchmarkPage() {
                 <h2 className="font-semibold">{row.engine}</h2>
                 <div className="flex flex-wrap gap-2 text-xs">
                   <span className="rounded bg-muted px-2 py-1">Time: {row.processing_time}s</span>
+                  {row.model && <span className="rounded bg-muted px-2 py-1">Model: {row.model}</span>}
                   <span className="rounded bg-muted px-2 py-1">Confidence: {row.confidence}</span>
                   <span className={`rounded px-2 py-1 ${row.status === "FAILED" ? "bg-destructive/20" : "bg-primary/10"}`}>
                     {row.status}
