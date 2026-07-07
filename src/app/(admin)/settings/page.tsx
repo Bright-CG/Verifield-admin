@@ -599,8 +599,6 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              )}
-
               <div className="grid gap-4 rounded-lg border border-border p-4 bg-muted/30">
                 <div className="font-medium text-sm">OpenAI Configuration</div>
                 <p className="text-xs text-muted-foreground -mt-2">
