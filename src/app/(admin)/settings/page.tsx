@@ -605,9 +605,8 @@ export default function SettingsPage() {
                   Provider: OpenAI · Uses the Responses API with multimodal image input. Model and prompt are loaded dynamically.
                 </p>
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="openai_enabled">Enable OpenAI</Label>
+                  <Label>Enable OpenAI</Label>
                   <Switch
-                    id="openai_enabled"
                     checked={config.integrations.openai_enabled}
                     onCheckedChange={v => setConfig({
                       ...config,
@@ -732,9 +731,8 @@ export default function SettingsPage() {
                   Provider: Gemini · Model and prompt are loaded dynamically from Admin Settings.
                 </p>
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="gemini_enabled">Enable Gemini</Label>
+                  <Label>Enable Gemini</Label>
                   <Switch
-                    id="gemini_enabled"
                     checked={config.integrations.gemini_enabled}
                     onCheckedChange={v => setConfig({
                       ...config,
