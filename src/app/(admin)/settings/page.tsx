@@ -37,6 +37,7 @@ interface SystemConfig {
     openai_timeout: number
     openai_max_retries: number
     openai_temperature: number
+    openai_include_temperature: boolean
     openai_api_url: string
     openai_api_model: string
     google_vision_api_key: string
@@ -90,6 +91,7 @@ export default function SettingsPage() {
       openai_timeout: 180,
       openai_max_retries: 2,
       openai_temperature: 0.1,
+      openai_include_temperature: false,
       openai_api_url: "https://api.openai.com/v1/responses",
       openai_api_model: "",
       google_vision_api_key: "",
@@ -166,8 +168,8 @@ export default function SettingsPage() {
             if (!integrations.gemini_prompt) {
               integrations.gemini_prompt = ""
             }
-            if (integrations.openai_enabled === undefined) {
-              integrations.openai_enabled = true
+            if (integrations.openai_include_temperature === undefined) {
+              integrations.openai_include_temperature = false
             }
             if (integrations.gemini_enabled === undefined) {
               integrations.gemini_enabled = true
@@ -722,6 +724,21 @@ export default function SettingsPage() {
                       })}
                     />
                   </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Send temperature to OpenAI</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Off by default. GPT-5 and some reasoning models reject temperature on the Responses API.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={config.integrations.openai_include_temperature}
+                    onCheckedChange={v => setConfig({
+                      ...config,
+                      integrations: { ...config.integrations, openai_include_temperature: v },
+                    })}
+                  />
                 </div>
               </div>
 
