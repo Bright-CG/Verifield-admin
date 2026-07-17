@@ -1,280 +1,287 @@
+import type { Metadata } from "next"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { BrandMark } from "@/components/brand-mark"
-import { FadeIn, HeroGlow } from "@/components/fade-in"
 import {
-  ShieldCheck,
+  Camera,
   MapPin,
   Fingerprint,
-  Zap,
-  Globe,
   Lock,
-  Camera,
-  BarChart3,
-  CheckCircle2,
-  ChevronRight,
-  Building2,
+  ShieldCheck,
   Vote,
-  FileSignature,
-  Scale,
-  Wifi,
+  Building2,
+  CheckCircle2,
 } from "lucide-react"
+import { FadeIn, HeroGlow } from "@/components/fade-in"
+import { MarketingHeader, MarketingFooter } from "@/components/marketing-chrome"
+import { AppStoreBadge, GooglePlayBadge } from "@/components/store-badges"
+import { cn } from "@/lib/utils"
+
+export const metadata: Metadata = {
+  title: "VeriField — Zero-Trust Field Verification for Elections & Teams",
+  description:
+    "Court-admissible field verification for African elections and corporate field operations. Live camera capture, GPS lock, SHA-256 receipts, and immutable ledgers.",
+}
+
+const trustChips = [
+  "SHA-256 Cryptography",
+  "20-Metre GPS Lock",
+  "Section 84 Compliant",
+  "Offline-First",
+]
 
 const features = [
   {
-    icon: Fingerprint,
-    title: "Hardware-Bound Identity",
+    title: "Live-Only Camera & Watermarking",
     description:
-      "Every agent is cryptographically bound to a single device. Play Integrity API and Apple DeviceCheck block emulators, rooted phones, and cloned apps.",
-  },
-  {
+      "No gallery uploads allowed. Our custom camera forces live capture, instantly watermarking the image bytes with unalterable GPS coordinates, timestamps, and location IDs.",
     icon: Camera,
-    title: "Live-Only Camera Capture",
-    description:
-      "Agents cannot upload from their gallery. A custom in-app camera watermarks every photo with GPS coordinates, PU number, and timestamp—making each photo a piece of evidence.",
+    large: true,
   },
   {
-    icon: MapPin,
     title: "20-Metre GPS Proximity Lock",
     description:
-      "Using MySQL ST_Distance_Sphere, the backend mathematically rejects any submission from an agent who is not physically at their assigned unit. No spoofing possible.",
+      "Using precise geolocation APIs, the system mathematically rejects any submission if the agent is not physically standing at their assigned polling unit or client shop.",
+    icon: MapPin,
+    large: false,
   },
   {
-    icon: Lock,
+    title: "Hardware-Bound Identity",
+    description:
+      "Play Integrity and Apple DeviceCheck block emulators, rooted phones, and cloned apps. One agent, one verified device.",
+    icon: Fingerprint,
+    large: false,
+  },
+  {
     title: "Immutable Database Triggers",
     description:
-      "The verifications table has a BEFORE UPDATE / BEFORE DELETE SQL trigger. Even a DBA with full root access cannot change a single digit once it is written.",
-  },
-  {
-    icon: FileSignature,
-    title: "Cryptographic SHA-256 Receipts",
-    description:
-      "Every report is signed with the device's private key (stored in Android Keystore / iOS Keychain). The math proves the data has not been altered by even one bit since capture.",
-  },
-  {
-    icon: Wifi,
-    title: "Offline-First Sync Vault",
-    description:
-      "Agents work with no internet. Reports are sealed locally and auto-synced the moment connectivity returns. A background WorkManager service handles retries with exponential backoff.",
-  },
-  {
-    icon: BarChart3,
-    title: "Real-Time War Room Dashboard",
-    description:
-      "The admin web dashboard receives live updates via Laravel Reverb WebSockets. Map dots pulse the instant a field report is verified—no page refresh needed.",
-  },
-  {
-    icon: Scale,
-    title: "Section 84 Legal Compliance",
-    description:
-      "Generate a court-ready Evidence Certificate for any unit with one click. Includes hardware attestation logs, SHA-256 checksums, and a hash chain audit trail.",
+      "Once a record hits our ledger, backend SQL triggers permanently block any future UPDATE or DELETE commands. Even an admin cannot alter the past.",
+    icon: Lock,
+    large: false,
   },
 ]
 
-const howItWorks = [
+const steps = [
   {
     step: "01",
     title: "Capture",
     description:
-      "The field agent opens the app, selects their assigned unit, and takes a live photo. The app overlays GPS, timestamp, and unit number directly onto the image bytes.",
+      "Agent takes a live photo. The app burns the GPS and timestamp into the image.",
   },
   {
     step: "02",
     title: "Sign & Seal",
     description:
-      "The app generates a SHA-256 hash of the image + coordinates + timestamp and signs it with the device's hardware-backed private key. The record is sealed.",
+      "A SHA-256 hash is generated and signed with the device's hardware-backed private key.",
   },
   {
     step: "03",
-    title: "Sentinel API Validates",
+    title: "API Validation",
     description:
-      "The Laravel backend verifies the cryptographic signature, runs the 20-metre proximity check, and confirms hardware attestation before writing to the database.",
+      "The backend verifies the cryptographic signature and runs the 20-metre proximity check.",
   },
   {
     step: "04",
     title: "Immutable Ledger",
     description:
-      "The validated record is written to the append-only verifications table. The database trigger immediately blocks any future UPDATE or DELETE—permanently.",
+      "The record is written to the append-only database, generating a court-ready Section 84 Evidence Certificate.",
   },
 ]
 
-const plans = [
+const transparency = [
   {
-    name: "Starter",
-    price: "$49",
-    period: "/month",
-    description: "For small field teams getting started.",
-    features: [
-      "Up to 10 Agents",
-      "GPS Proximity Lock",
-      "Offline Sync Vault",
-      "Basic Dashboard",
-      "Email Support",
-    ],
-    cta: "Start Free Trial",
-    highlighted: false,
+    title: "What is a SHA-256 hash?",
+    body: "A unique fingerprint for your data. Change one pixel or one GPS digit and the fingerprint changes instantly. Our servers reject anything that no longer matches.",
   },
   {
-    name: "Enterprise",
-    price: "$199",
-    period: "/month",
-    description: "For scalable, secure corporate operations.",
-    features: [
-      "Unlimited Agents",
-      "Live War Room Map",
-      "Immutable Audit Logs",
-      "Fraud Detection Engine",
-      "Real-Time WebSockets",
-      "Priority Support",
-    ],
-    cta: "Get Enterprise",
-    highlighted: true,
+    title: "Why can't results be edited?",
+    body: "Database triggers fire before any UPDATE or DELETE. Even with full database access, the command fails. Historical evidence stays frozen.",
   },
   {
-    name: "Election Mode",
-    price: "Custom",
-    period: "",
-    description: "Specialized zero-trust election deployment.",
-    features: [
-      "State / LGA / Ward / PU Hierarchy",
-      "EC8A Result Capture",
-      "Section 84 Certificate Export",
-      "Hash-Chain Audit Trail",
-      "Dedicated Infrastructure",
-      "SLA-backed Uptime",
-    ],
-    cta: "Contact Us",
-    highlighted: false,
+    title: "What is the hash chain?",
+    body: "Each record includes a hash of the previous one. Tamper with record #50 and every later link breaks — auditors can verify the full chain in seconds.",
   },
 ]
 
 export default function LandingPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground">
-      {/* ─── HEADER ─── */}
-      <header className="h-16 flex items-center justify-between px-6 md:px-12 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-50">
-        <BrandMark href="/" size="lg" nameClassName="hidden sm:inline" />
-        <nav className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
-          <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-          <a href="#how-it-works" className="hover:text-foreground transition-colors">How It Works</a>
-          <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
-          <a href="#transparency" className="hover:text-foreground transition-colors">Transparency</a>
-        </nav>
-        <div className="flex items-center gap-3">
-          <ThemeToggle />
-          <Link href="/login">
-            <Button variant="ghost" size="sm">Sign In</Button>
-          </Link>
-          <Link href="/signup">
-            <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
-              Get Started
-            </Button>
-          </Link>
-        </div>
-      </header>
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <MarketingHeader />
 
       <main className="flex-1">
-        {/* ─── HERO ─── */}
-        <section className="relative py-28 md:py-40 px-6 text-center overflow-hidden">
+        {/* Hero */}
+        <section className="relative overflow-hidden px-6 pb-24 pt-20 md:pb-32 md:pt-28">
           <HeroGlow />
-
-          <FadeIn>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/30 bg-primary/5 text-primary text-sm font-medium mb-8">
-              <ShieldCheck className="w-4 h-4" />
-              Court-Admissible Field Verification Engine
-            </div>
-          </FadeIn>
-
-          <FadeIn delay={100}>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight max-w-5xl mx-auto leading-tight mb-6">
-              Zero-Trust Proof of Action.{" "}
-              <span className="text-primary">From Field to Court.</span>
-            </h1>
-          </FadeIn>
-
-          <FadeIn delay={200}>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-              Whether your agent is verifying a pharmacy stock in Lagos or recording a polling result in a remote LGA, VeriField generates a mathematically tamper-proof receipt—anchored to hardware, signed by cryptography, and sealed by the database itself.
-            </p>
-          </FadeIn>
-
-          <FadeIn delay={300}>
-            <div className="flex flex-wrap gap-4 justify-center">
-            <Link href="/signup">
-              <Button size="lg" className="h-12 px-8 text-base bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25">
-                Start Free Trial <ChevronRight className="ml-1 w-4 h-4" />
-              </Button>
-            </Link>
-            <Link href="#how-it-works">
-              <Button size="lg" variant="outline" className="h-12 px-8 text-base border-border">
-                See How It Works
-              </Button>
-            </Link>
-          </div>
-
-          {/* Trust badges */}
-          <div className="mt-16 flex flex-wrap justify-center gap-8 text-sm text-muted-foreground">
-            {["SHA-256 Signed", "Hardware Attested", "Section 84 Compliant", "Offline-First"].map((badge) => (
-              <div key={badge} className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-primary" />
-                {badge}
-              </div>
-            ))}
-          </div>
-          </FadeIn>
-        </section>
-
-        {/* ─── DUAL MODE BANNER ─── */}
-        <section className="py-16 px-6 border-y border-border bg-muted/30">
-          <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-8">
-            <div className="p-8 rounded-2xl border border-border bg-card flex items-start gap-5">
-              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <Vote className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold mb-2">Election Mode</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  State → LGA → Ward → Polling Unit hierarchy. EC8A Result Sheet capture. Automatic discrepancy detection. Section 84 Evidence Certificates. Built to expose rigging, not enable it.
-                </p>
-              </div>
-            </div>
-            <div className="p-8 rounded-2xl border border-border bg-card flex items-start gap-5">
-              <div className="h-12 w-12 rounded-xl bg-secondary/10 flex items-center justify-center shrink-0">
-                <Building2 className="w-6 h-6 text-secondary" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold mb-2">Corporate Mode</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  Territory → Store hierarchy. Field check-in with invoice capture. GPS-verified sales visits. Offline-first for remote locations. Trust your field data completely.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ─── FEATURES ─── */}
-        <section id="features" className="py-24 px-6">
-          <div className="max-w-6xl mx-auto">
+          <div className="relative mx-auto max-w-4xl text-center">
             <FadeIn>
-              <div className="text-center mb-16">
-                <h2 className="text-4xl font-bold mb-4">
-                  Built to be <span className="text-primary">Mathematically Stubborn</span>
+              <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary backdrop-blur-sm">
+                <ShieldCheck className="h-4 w-4" />
+                Court-Admissible Field Verification Engine
+              </div>
+            </FadeIn>
+
+            <FadeIn delay={80}>
+              <h1 className="text-balance text-5xl font-bold tracking-tight md:text-7xl md:leading-[1.05]">
+                Zero-Trust Proof of Action.{" "}
+                <span className="text-primary">From the Field to the Court.</span>
+              </h1>
+            </FadeIn>
+
+            <FadeIn delay={160}>
+              <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground md:text-xl">
+                Whether protecting an election polling unit from rigging or verifying a remote
+                sales visit, VeriField generates mathematically tamper-proof receipts. Anchored to
+                hardware, signed by cryptography, and sealed permanently.
+              </p>
+            </FadeIn>
+
+            <FadeIn delay={240}>
+              <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+                <AppStoreBadge />
+                <GooglePlayBadge />
+              </div>
+            </FadeIn>
+
+            <FadeIn delay={320}>
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+                {trustChips.map((chip) => (
+                  <span
+                    key={chip}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-background/60 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5 text-secondary" />
+                    {chip}
+                  </span>
+                ))}
+              </div>
+            </FadeIn>
+          </div>
+        </section>
+
+        {/* Audience bento */}
+        <section className="border-y border-border/60 bg-muted/30 px-6 py-20">
+          <div className="mx-auto grid max-w-6xl gap-5 md:grid-cols-2">
+            <FadeIn>
+              <div
+                id="election"
+                className="group glass-card relative overflow-hidden rounded-lg p-8 transition-colors hover:border-primary/50"
+              >
+                <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+                <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
+                  <Vote className="h-6 w-6" />
+                </div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                  Primary · Election Integrity Mode
+                </p>
+                <h2 className="mt-2 text-2xl font-bold tracking-tight">
+                  For Democratic Transparency
                 </h2>
-                <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                  Every layer—hardware, app, API, and database—is designed to make data tampering not just difficult, but mathematically impossible.
+                <p className="mt-3 text-muted-foreground leading-relaxed">
+                  Secure EC8A result sheets at the ward level. Auto-detect discrepancies. Built to
+                  expose rigging with hash-chain audit trails.
                 </p>
               </div>
             </FadeIn>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {features.map((feature, i) => (
-                <FadeIn key={feature.title} delay={i * 60}>
-                  <div className="p-6 rounded-2xl border border-border bg-card hover:border-primary/40 transition-colors group h-full">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                      <feature.icon className="w-5 h-5 text-primary" />
+
+            <FadeIn delay={120}>
+              <div
+                id="corporate"
+                className="group glass-card relative overflow-hidden rounded-lg p-8 transition-colors hover:border-secondary/50"
+              >
+                <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-secondary/15 blur-3xl" />
+                <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-secondary/10 text-secondary transition-colors group-hover:bg-secondary/20">
+                  <Building2 className="h-6 w-6" />
+                </div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-secondary">
+                  Secondary · Corporate Accountability
+                </p>
+                <h2 className="mt-2 text-2xl font-bold tracking-tight">
+                  For Distributed Teams
+                </h2>
+                <p className="mt-3 text-muted-foreground leading-relaxed">
+                  Stop GPS spoofing and fake reports. Ensure sales reps and field workers are exactly
+                  where they claim to be, when they claim to be there.
+                </p>
+              </div>
+            </FadeIn>
+          </div>
+        </section>
+
+        {/* Features bento */}
+        <section id="features" className="px-6 py-24">
+          <div className="mx-auto max-w-6xl">
+            <FadeIn>
+              <div className="mx-auto max-w-3xl text-center">
+                <h2 className="text-4xl font-bold tracking-tight md:text-5xl">
+                  Engineered to be Mathematically Stubborn.
+                </h2>
+                <p className="mt-4 text-lg text-muted-foreground">
+                  We don&apos;t rely on trust. Every layer of VeriField—from the camera lens to the
+                  database ledger—makes data tampering impossible.
+                </p>
+              </div>
+            </FadeIn>
+
+            <div className="mt-14 grid gap-4 md:grid-cols-3">
+              {features.map((feature, index) => {
+                const Icon = feature.icon
+                return (
+                  <FadeIn
+                    key={feature.title}
+                    delay={index * 90}
+                    className={cn(feature.large && "md:col-span-2 md:row-span-2")}
+                  >
+                    <div
+                      className={cn(
+                        "group glass-card flex h-full flex-col rounded-lg p-6 transition-all duration-300 hover:border-primary/45 hover:shadow-glow",
+                        feature.large && "md:p-8"
+                      )}
+                    >
+                      <div className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <h3
+                        className={cn(
+                          "font-bold tracking-tight",
+                          feature.large ? "text-2xl md:text-3xl" : "text-lg"
+                        )}
+                      >
+                        {feature.title}
+                      </h3>
+                      <p
+                        className={cn(
+                          "mt-3 leading-relaxed text-muted-foreground",
+                          feature.large && "text-base md:text-lg"
+                        )}
+                      >
+                        {feature.description}
+                      </p>
                     </div>
-                    <h3 className="font-semibold mb-2">{feature.title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+                  </FadeIn>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* How it works */}
+        <section id="how-it-works" className="border-y border-border/60 bg-muted/25 px-6 py-24">
+          <div className="mx-auto max-w-6xl">
+            <FadeIn>
+              <h2 className="text-center text-4xl font-bold tracking-tight md:text-5xl">
+                A Four-Step Zero-Trust Pipeline.
+              </h2>
+            </FadeIn>
+
+            <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+              {steps.map((item, index) => (
+                <FadeIn key={item.step} delay={index * 100}>
+                  <div className="glass-card relative h-full rounded-lg p-6">
+                    <span className="text-4xl font-bold tracking-tighter text-primary/25">
+                      {item.step}
+                    </span>
+                    <h3 className="mt-3 text-xl font-bold tracking-tight">{item.title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                      {item.description}
+                    </p>
                   </div>
                 </FadeIn>
               ))}
@@ -282,160 +289,60 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ─── HOW IT WORKS ─── */}
-        <section id="how-it-works" className="py-24 px-6 bg-muted/20 border-y border-border">
-          <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold mb-4">How VeriField Works</h2>
-              <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-                A four-step zero-trust pipeline from the field agent's camera to a court-admissible record.
-              </p>
-            </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {howItWorks.map((step, i) => (
-                <div key={step.step} className="relative">
-                  {i < howItWorks.length - 1 && (
-                    <div className="hidden lg:block absolute top-6 left-full w-full h-px bg-border -translate-x-1/2 z-0" />
-                  )}
-                  <div className="relative z-10">
-                    <div className="text-4xl font-black text-primary/20 mb-3">{step.step}</div>
-                    <h3 className="text-lg font-bold mb-2">{step.title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{step.description}</p>
+        {/* Transparency */}
+        <section id="transparency" className="px-6 py-24">
+          <div className="mx-auto max-w-6xl">
+            <FadeIn>
+              <div className="mx-auto max-w-3xl text-center">
+                <h2 className="text-4xl font-bold tracking-tight">Transparency Portal</h2>
+                <p className="mt-4 text-lg text-muted-foreground">
+                  The best security is security you can inspect. Here is how we protect evidence—in
+                  plain English.
+                </p>
+              </div>
+            </FadeIn>
+
+            <div className="mt-12 grid gap-5 md:grid-cols-3">
+              {transparency.map((item, index) => (
+                <FadeIn key={item.title} delay={index * 90}>
+                  <div className="glass-card h-full rounded-lg p-6 transition-colors hover:border-primary/40">
+                    <h3 className="text-lg font-semibold tracking-tight">{item.title}</h3>
+                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
                   </div>
-                </div>
+                </FadeIn>
               ))}
             </div>
           </div>
         </section>
 
-        {/* ─── TRANSPARENCY PORTAL ─── */}
-        <section id="transparency" className="py-24 px-6">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
-              <Globe className="w-7 h-7 text-primary" />
-            </div>
-            <h2 className="text-4xl font-bold mb-4">Transparency Portal</h2>
-            <p className="text-muted-foreground text-lg mb-12 max-w-2xl mx-auto">
-              We believe that the best security is security you can inspect. Here is exactly how we protect your data—in plain English.
-            </p>
-            <div className="grid md:grid-cols-3 gap-6 text-left">
-              {[
-                {
-                  title: "What is a SHA-256 hash?",
-                  body: "Think of it as a unique fingerprint for your data. If even one pixel of the photo or one digit of the GPS coordinate is changed, the fingerprint instantly changes. Our server compares fingerprints and rejects anything that doesn't match.",
-                },
-                {
-                  title: "Why can't you edit a result?",
-                  body: "The database has a built-in alarm that triggers BEFORE any UPDATE or DELETE command. Even if a hacker got full database access, the alarm fires and the command fails. The data is frozen permanently.",
-                },
-                {
-                  title: "What is the hash chain?",
-                  body: "Each new record contains a hash of the previous record (like links in a chain). If anyone secretly changed record #50, the hashes for records #51 onwards instantly break. An independent auditor can verify the entire chain in seconds.",
-                },
-              ].map((item) => (
-                <div key={item.title} className="p-6 rounded-2xl border border-border bg-card">
-                  <h3 className="font-semibold mb-3 text-sm">{item.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{item.body}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ─── PRICING ─── */}
-        <section id="pricing" className="py-24 px-6 bg-muted/20 border-y border-border">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold mb-4">Transparent Pricing</h2>
-              <p className="text-muted-foreground text-lg">
-                Start free. Scale when you need to. Subscriptions are fully controlled by the Super Admin.
+        {/* Final CTA */}
+        <section className="relative overflow-hidden px-6 pb-24">
+          <div className="absolute inset-0 -z-10 bg-gradient-to-b from-primary/5 via-transparent to-secondary/5" />
+          <FadeIn>
+            <div className="glass-card mx-auto max-w-4xl rounded-lg px-8 py-14 text-center shadow-glow">
+              <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
+                Ready to make field evidence court-ready?
+              </h2>
+              <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
+                Deploy VeriField for election integrity or corporate accountability. Talk to sales
+                or download the field agent apps.
               </p>
-            </div>
-            <div className="grid md:grid-cols-3 gap-8">
-              {plans.map((plan) => (
-                <div
-                  key={plan.name}
-                  className={`p-8 rounded-2xl border flex flex-col ${
-                    plan.highlighted
-                      ? "border-primary bg-card shadow-[0_0_60px_rgba(99,102,241,0.15)] relative"
-                      : "border-border bg-card"
-                  }`}
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                <AppStoreBadge />
+                <GooglePlayBadge />
+                <Link
+                  href="/support"
+                  className="inline-flex h-12 items-center rounded-lg border border-border bg-background px-5 text-sm font-semibold transition hover:border-primary/40"
                 >
-                  {plan.highlighted && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-4 py-1 rounded-full text-xs font-bold tracking-wide">
-                      MOST POPULAR
-                    </div>
-                  )}
-                  <h3 className="text-xl font-bold">{plan.name}</h3>
-                  <div className="mt-4 mb-2">
-                    <span className="text-4xl font-extrabold">{plan.price}</span>
-                    <span className="text-muted-foreground text-sm">{plan.period}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-6">{plan.description}</p>
-                  <ul className="space-y-3 mb-8 flex-1">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-center gap-2 text-sm">
-                        <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href="/signup">
-                    <Button
-                      className={`w-full ${
-                        plan.highlighted
-                          ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25"
-                          : "bg-accent text-foreground hover:bg-accent/80"
-                      }`}
-                    >
-                      {plan.cta}
-                    </Button>
-                  </Link>
-                </div>
-              ))}
+                  Contact Sales
+                </Link>
+              </div>
             </div>
-          </div>
-        </section>
-
-        {/* ─── CTA BANNER ─── */}
-        <section className="py-24 px-6 text-center">
-          <div className="max-w-2xl mx-auto">
-            <Zap className="w-10 h-10 text-primary mx-auto mb-6" />
-            <h2 className="text-4xl font-bold mb-4">
-              Ready to make your field data court-ready?
-            </h2>
-            <p className="text-muted-foreground text-lg mb-10">
-              Join teams already using VeriField to secure their operations. No credit card required to start.
-            </p>
-            <Link href="/signup">
-              <Button size="lg" className="h-12 px-10 text-base bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl shadow-primary/25">
-                Create Your Free Account <ChevronRight className="ml-1 w-4 h-4" />
-              </Button>
-            </Link>
-          </div>
+          </FadeIn>
         </section>
       </main>
 
-      {/* ─── FOOTER ─── */}
-      <footer className="border-t border-border py-10 px-6 md:px-12">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="text-xl font-bold tracking-tighter">
-            Veri<span className="text-primary">Field</span>
-          </div>
-          <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
-            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-            <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
-            <a href="#transparency" className="hover:text-foreground transition-colors">Transparency</a>
-            <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
-            <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
-            <Link href="/support" className="hover:text-foreground transition-colors">Support</Link>
-            <Link href="/login" className="hover:text-foreground transition-colors">Sign In</Link>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} VeriField. All rights reserved.
-          </p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   )
 }
