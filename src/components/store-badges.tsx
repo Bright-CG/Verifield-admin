@@ -1,8 +1,9 @@
 import Link from "next/link"
+import { APP_STORE_URL, PLAY_STORE_URL } from "@/lib/store-links"
 
 /** Official-style App Store badge (black pill with Apple logo + dual-line copy). */
 export function AppStoreBadge({
-  href = "https://apps.apple.com/",
+  href = APP_STORE_URL,
   className = "",
 }: {
   href?: string
@@ -29,7 +30,7 @@ export function AppStoreBadge({
 
 /** Official-style Google Play badge. */
 export function GooglePlayBadge({
-  href = "https://play.google.com/store/apps/details?id=ng.com.verifield.app",
+  href = PLAY_STORE_URL,
   className = "",
 }: {
   href?: string
