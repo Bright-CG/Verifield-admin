@@ -51,12 +51,7 @@ export function applyBrandColor(hex: string): void {
   const root = document.documentElement
   root.style.setProperty("--primary", primary)
   root.style.setProperty("--ring", primary)
-
-  const parts = hexToHslComponents(hex)
-  if (parts) {
-    const secondaryL = Math.min(100, parts.l + 12)
-    root.style.setProperty("--secondary", `${parts.h} ${parts.s}% ${secondaryL}%`)
-  }
+  // Keep verification emerald as --secondary / --success (marketing + UI accent).
 }
 
 export function resolveLogoSrc(logoUrl?: string | null): string {

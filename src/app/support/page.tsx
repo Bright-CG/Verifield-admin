@@ -3,77 +3,126 @@ import Link from "next/link"
 import { LegalPageShell } from "@/components/legal-page-shell"
 
 export const metadata: Metadata = {
-  title: "Support | VeriField",
-  description: "Contact VeriField support for help with the mobile app and admin dashboard.",
+  title: "Support & Contact | VeriField",
+  description:
+    "Get help with VeriField. Field agents contact their organisation admin first; admins reach VeriField support with SLA expectations.",
 }
+
+const TOC = [
+  { id: "agents", label: "Field agents" },
+  { id: "admins", label: "Org admins" },
+  { id: "emails", label: "Email contacts" },
+  { id: "sla", label: "Response times" },
+]
 
 export default function SupportPage() {
   return (
-    <LegalPageShell title="Support & Contact" updated="June 28, 2026">
+    <LegalPageShell title="Support & Contact" updated="July 17, 2026" toc={TOC}>
       <p>
-        Need help with VeriField? Use the channels below. For fastest resolution, field agents should contact
-        their organisation administrator first.
+        VeriField support is organised so field operations stay fast and secure. Most agent issues
+        are resolved fastest by your organisation administrator, who controls accounts, polling
+        units / sites, and device resets.
       </p>
 
-      <h2>Field agents (mobile app)</h2>
+      <div className="not-prose grid gap-4 rounded-lg border border-border bg-muted/30 p-5 md:grid-cols-2">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">Field agents</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Start with your organisation admin for login, device binding, assignments, and capture
+            workflow questions.
+          </p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-secondary">
+            Organisation admins
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Email VeriField support for platform incidents, console access, billing/plan questions,
+            and escalation.
+          </p>
+        </div>
+      </div>
+
+      <h2 id="agents">1. Field agents</h2>
       <ul>
-        <li>Login, device binding, or polling unit assignment — contact your organisation admin.</li>
-        <li>Sync or upload errors — note the error message and time, then contact your admin or us.</li>
-        <li>Account deletion — see{" "}
-          <Link href="/delete-account" className="text-primary hover:underline">
-            Account Deletion
-          </Link>
-          .
+        <li>
+          <strong>Login, OTP, or wrong organisation:</strong> contact your organisation admin first.
+        </li>
+        <li>
+          <strong>New phone / device binding:</strong> your admin must issue a device reset before
+          you can bind a new handset.
+        </li>
+        <li>
+          <strong>Polling unit or site missing:</strong> your admin assigns units in the console.
+        </li>
+        <li>
+          <strong>Camera or location blocked:</strong> enable permissions in iOS/Android Settings →
+          VeriField. If the system prompt never appears, reinstall the latest app build.
+        </li>
+        <li>
+          <strong>Sync / offline vault stuck:</strong> confirm connectivity, force sync from the
+          vault if available, then escalate to your admin with screenshots and timestamps.
+        </li>
+        <li>
+          <strong>Account or data deletion:</strong> see{" "}
+          <Link href="/delete-account">Account Deletion</Link>.
         </li>
       </ul>
 
-      <h2>Organisation administrators</h2>
+      <h2 id="admins">2. Organisation administrators</h2>
       <ul>
-        <li>Staff provisioning, EC8A review, war room access — use the admin dashboard or email support.</li>
-        <li>Technical incidents — include tenant name, user email, and steps to reproduce.</li>
+        <li>Staff invites, roles, EC8A review, war room, imports, and certificates: use the console first.</li>
+        <li>
+          For platform incidents, email support with: organisation/tenant name, affected user email,
+          device OS + app version, approximate UTC time, and steps to reproduce.
+        </li>
+        <li>
+          Security incidents (suspected spoofing, compromised admin account): email support
+          immediately and rotate credentials.
+        </li>
       </ul>
 
-      <h2>Email</h2>
+      <h2 id="emails">3. Contact emails & URLs</h2>
       <ul>
         <li>
           General support:{" "}
-          <a href="mailto:support@verifield.com.ng" className="text-primary hover:underline">
-            support@verifield.com.ng
-          </a>
+          <a href="mailto:support@verifield.com.ng">support@verifield.com.ng</a>
         </li>
         <li>
-          Privacy & data requests:{" "}
-          <a href="mailto:privacy@verifield.com.ng" className="text-primary hover:underline">
-            privacy@verifield.com.ng
-          </a>
+          Privacy / deletion:{" "}
+          <a href="mailto:privacy@verifield.com.ng">privacy@verifield.com.ng</a>
         </li>
         <li>
-          Legal & contracts:{" "}
-          <a href="mailto:legal@verifield.com.ng" className="text-primary hover:underline">
-            legal@verifield.com.ng
-          </a>
+          Legal: <a href="mailto:legal@verifield.com.ng">legal@verifield.com.ng</a>
+        </li>
+        <li>
+          Website: <a href="https://verifield.com.ng">https://verifield.com.ng</a>
+        </li>
+        <li>
+          API: <a href="https://api.verifield.com.ng">https://api.verifield.com.ng</a>
         </li>
       </ul>
 
-      <h2>Platform URLs</h2>
+      <h2 id="sla">4. Response expectations (SLA)</h2>
       <ul>
         <li>
-          Website & admin:{" "}
-          <a href="https://verifield.com.ng" className="text-primary hover:underline">
-            https://verifield.com.ng
-          </a>
+          <strong>Standard requests:</strong> we aim to respond within <strong>2 business days</strong>.
         </li>
         <li>
-          API:{" "}
-          <a href="https://api.verifield.com.ng" className="text-primary hover:underline">
-            https://api.verifield.com.ng
-          </a>
+          <strong>Service outages / security incidents:</strong> prioritised; initial acknowledgement
+          targeted within one business day where possible.
+        </li>
+        <li>
+          Election-day or contracted enterprise SLAs may supersede these defaults under a separate
+          written agreement.
         </li>
       </ul>
 
-      <h2>Response times</h2>
+      <h2>5. Sales & demos</h2>
       <p>
-        We aim to respond to support requests within 2 business days. Critical production outages are prioritised.
+        For Election Integrity or Corporate Verification deployments, email{" "}
+        <a href="mailto:support@verifield.com.ng">support@verifield.com.ng</a> with subject
+        &quot;Contact Sales&quot; and include your organisation, country, and expected agent count.
       </p>
     </LegalPageShell>
   )

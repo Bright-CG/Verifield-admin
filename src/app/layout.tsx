@@ -7,8 +7,12 @@ import { ClientProviders } from "./client-providers";
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: "VeriField Admin",
-  description: "Secure Backend Dashboard",
+  title: {
+    default: "VeriField — Zero-Trust Field Verification",
+    template: "%s | VeriField",
+  },
+  description:
+    "Court-admissible field verification for African elections and corporate field operations.",
   icons: {
     icon: "/favicon.png",
     apple: "/verifield-logo.png",
@@ -21,7 +25,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={cn("font-sans", inter.variable)}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      data-scroll-behavior="smooth"
+      className={cn("font-sans", inter.variable)}
+    >
       <body className="antialiased min-h-screen" suppressHydrationWarning>
         <ClientProviders>{children}</ClientProviders>
       </body>

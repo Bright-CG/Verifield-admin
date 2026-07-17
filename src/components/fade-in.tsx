@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from "react"
+import React from "react"
+import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
 
 export function FadeIn({
@@ -12,54 +13,29 @@ export function FadeIn({
   className?: string
   delay?: number
 }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [visible, setVisible] = useState(false)
-
-  useEffect(() => {
-    const node = ref.current
-    if (!node) return
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true)
-          observer.disconnect()
-        }
-      },
-      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
-    )
-
-    observer.observe(node)
-    return () => observer.disconnect()
-  }, [])
+  const reduceMotion = useReducedMotion()
 
   return (
-    <div
-      ref={ref}
-      className={cn(
-        "transition-all duration-700 ease-out",
-        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8",
-        className
-      )}
-      style={{ transitionDelay: `${delay}ms` }}
+    <motion.div
+      className={cn(className)}
+      initial={reduceMotion ? false : { opacity: 0, y: 32 }}
+      whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.15, margin: "0px 0px -40px 0px" }}
+      transition={{ duration: 0.7, ease: "easeOut", delay: delay / 1000 }}
     >
       {children}
-    </div>
+    </motion.div>
   )
 }
 
 export function HeroGlow() {
   return (
     <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-primary/10 blur-[120px] rounded-full animate-pulse" />
-      <div
-        className="absolute top-1/3 left-1/4 w-64 h-64 bg-primary/5 blur-[80px] rounded-full"
-        style={{ animation: "vf-float 8s ease-in-out infinite" }}
-      />
-      <div
-        className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-secondary/10 blur-[60px] rounded-full"
-        style={{ animation: "vf-float 10s ease-in-out infinite reverse" }}
-      />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[45%] h-[520px] w-[820px] rounded-full bg-primary/15 blur-[120px] animate-pulse" />
+      <div className="absolute top-[18%] left-[12%] h-72 w-72 rounded-full bg-primary/10 blur-[90px] animate-vf-float" />
+      <div className="absolute bottom-[12%] right-[10%] h-64 w-64 rounded-full bg-secondary/20 blur-[80px] animate-vf-float-slow" />
+      <div className="absolute top-[40%] right-[22%] h-40 w-40 rounded-full bg-secondary/10 blur-[60px] animate-vf-float" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,transparent_20%,hsl(var(--background))_75%)]" />
     </div>
   )
 }
