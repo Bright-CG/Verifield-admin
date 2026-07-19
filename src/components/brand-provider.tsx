@@ -76,9 +76,27 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const logo = resolveLogoSrc(logoUrl)
-    upsertLink("icon", logo, "image/png")
-    upsertLink("apple-touch-icon", logo)
-    document.title = `${appName} Admin`
+    // Prefer dedicated favicon assets so browsers don't stick on an old .ico cache entry.
+    upsertLink("icon", "/favicon.ico")
+    upsertLink("icon", "/favicon.png", "image/png")
+    upsertLink("apple-touch-icon", "/apple-icon.png")
+    // Keep brand logo available for UI; only override favicon if a custom org logo is configured.
+    if (logoUrl) {
+      upsertLink("icon", logo, "image/png")
+      upsertLink("apple-touch-icon", logo)
+    }
+    const path = window.location.pathname
+    const isMarketing =
+      path === "/" ||
+      path.startsWith("/privacy") ||
+      path.startsWith("/terms") ||
+      path.startsWith("/support") ||
+      path.startsWith("/delete-account") ||
+      path.startsWith("/login") ||
+      path.startsWith("/signup") ||
+      path.startsWith("/select-plan") ||
+      path.startsWith("/verify-email")
+    document.title = isMarketing ? appName : `${appName} Admin`
   }, [appName, logoUrl])
 
   const value = useMemo(
