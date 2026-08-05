@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   LayoutDashboard, Map, Users, FileText, LogOut, UserCheck, Upload, Settings,
-  Menu, X, ClipboardList, BarChart3, FlaskConical,
+  Menu, X, ClipboardList, BarChart3, FlaskConical, Trash2,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { BrandMark } from "@/components/brand-mark"
@@ -19,6 +19,7 @@ const navItems = [
   { href: "/submissions", label: "Submissions", icon: ClipboardList, tenantScoped: true },
   { href: "/ec8a", label: "EC8A", icon: BarChart3, tenantScoped: true },
   { href: "/tenants", label: "Tenants & Config", icon: Users, superOnly: true },
+  { href: "/account-deletion-requests", label: "Deletion Requests", icon: Trash2, superOnly: true },
   { href: "/staff", label: "Staff Management", icon: UserCheck, tenantScoped: true, tenantLabel: true },
   { href: "/import", label: "Bulk Import", icon: Upload, tenantScoped: true },
   { href: "/audit-log", label: "Audit Trail", icon: FileText, tenantScoped: true },

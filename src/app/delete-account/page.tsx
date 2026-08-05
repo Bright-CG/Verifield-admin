@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { LegalPageShell } from "@/components/legal-page-shell"
+import { AccountDeletionRequestForm } from "@/components/account-deletion-request-form"
 
 export const metadata: Metadata = {
   title: "Account & Data Deletion | VeriField",
@@ -36,7 +37,9 @@ export default function DeleteAccountPage() {
       </div>
 
       <h2 id="how">1. How to request deletion</h2>
-      <h3>Field agents (mobile app users)</h3>
+      <AccountDeletionRequestForm />
+
+      <h3 className="!mt-10">Field agents (mobile app users) — alternative paths</h3>
       <ol className="list-decimal space-y-2 pl-5">
         <li>
           First ask your <strong>organisation administrator</strong> to deactivate or remove your
