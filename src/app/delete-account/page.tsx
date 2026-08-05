@@ -18,7 +18,7 @@ const TOC = [
 
 export default function DeleteAccountPage() {
   return (
-    <LegalPageShell title="Account & Data Deletion" updated="July 17, 2026" toc={TOC}>
+    <LegalPageShell title="Account & Data Deletion" updated="August 5, 2026" toc={TOC}>
       <p>
         This page explains how VeriField users can request deletion of their account and associated
         personal data. It exists to satisfy Apple App Store and Google Play account-deletion
